@@ -1,36 +1,61 @@
 package com.example.appgoimon.data.repository
 
-import com.example.appgoimon.data.remote.AdminLoginRequest
-import com.example.appgoimon.data.remote.AdminUserDto
+import com.example.appgoimon.data.remote.AuthLoginRequest
+import com.example.appgoimon.data.remote.AuthRegisterRequest
+import com.example.appgoimon.data.remote.AuthUserDto
 import com.example.appgoimon.data.remote.RetrofitClient
 
 class AuthRepository {
 
-    suspend fun loginAdmin(
+    suspend fun login(
         username: String,
         password: String
-    ): Result<AdminUserDto> {
+    ): Result<AuthUserDto> {
         return try {
-            val response = RetrofitClient.apiService.adminLogin(
-                AdminLoginRequest(
+            val response = RetrofitClient.apiService.login(
+                AuthLoginRequest(
                     username = username,
                     password = password
                 )
             )
 
-            if (response.isSuccessful) {
-                val body = response.body()
+            val body = response.body()
 
-                if (body != null && body.success && body.data != null) {
-                    Result.success(body.data)
-                } else {
-                    Result.failure(Exception(body?.message ?: "Đăng nhập thất bại"))
-                }
+            if (response.isSuccessful && body != null && body.success && body.data != null) {
+                Result.success(body.data)
             } else {
-                Result.failure(Exception("Lỗi server: ${response.code()}"))
+                Result.failure(Exception(body?.message ?: "Dang nhap that bai"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Không thể kết nối server: ${e.message}"))
+            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+        }
+    }
+
+    suspend fun register(
+        username: String,
+        password: String,
+        fullName: String,
+        phone: String
+    ): Result<AuthUserDto> {
+        return try {
+            val response = RetrofitClient.apiService.register(
+                AuthRegisterRequest(
+                    username = username,
+                    password = password,
+                    full_name = fullName,
+                    phone = phone
+                )
+            )
+
+            val body = response.body()
+
+            if (response.isSuccessful && body != null && body.success && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Dang ky that bai"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
         }
     }
 }

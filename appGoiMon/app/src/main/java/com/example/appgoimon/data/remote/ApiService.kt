@@ -1,5 +1,6 @@
 package com.example.appgoimon.data.remote
 
+import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -12,15 +13,25 @@ data class ApiResponse<T>(
     val data: T?
 )
 
-data class AdminLoginRequest(
+data class AuthLoginRequest(
     val username: String,
     val password: String
 )
 
-data class AdminUserDto(
+data class AuthRegisterRequest(
+    val username: String,
+    val password: String,
+    val full_name: String,
+    val phone: String
+)
+
+data class AuthUserDto(
     val id: Int,
     val username: String,
-    val role: String
+    val full_name: String?,
+    val phone: String?,
+    val role: String,
+    val created_at: String?
 )
 
 data class TableDto(
@@ -86,12 +97,177 @@ data class ConfirmPaymentDataDto(
     val status: String
 )
 
+data class CloseTableRequest(
+    val session_id: Int
+)
+
+data class DashboardStatsDto(
+    val total_revenue: String,
+    val today_revenue: String,
+    val active_sessions: Int,
+    val pending_payment_sessions: Int,
+    val tables: DashboardTableStatsDto,
+    val order_items: DashboardOrderItemStatsDto,
+    val menu_items: DashboardMenuItemStatsDto,
+    val categories: DashboardCategoryStatsDto
+)
+
+data class DashboardTableStatsDto(
+    val total: Int,
+    val available: Int,
+    val occupied: Int,
+    val waiting_payment: Int
+)
+
+data class DashboardOrderItemStatsDto(
+    val pending: Int,
+    val processing: Int,
+    val served: Int,
+    val rejected: Int
+)
+
+data class DashboardMenuItemStatsDto(
+    val total: Int,
+    val available: Int,
+    val out_of_stock: Int,
+    val hidden: Int
+)
+
+data class DashboardCategoryStatsDto(
+    val total: Int,
+    val active: Int,
+    val inactive: Int
+)
+
+data class CategoryDto(
+    val id: Int,
+    val category_name: String,
+    val status: String
+)
+
+data class ManageCategoryRequest(
+    val action: String,
+    val category_id: Int? = null,
+    val category_name: String? = null,
+    val status: String? = null
+)
+
+data class MenuItemDto(
+    val id: Int,
+    val category_id: Int,
+    val category_name: String?,
+    val name: String,
+    val image: String?,
+    val description: String?,
+    val status: String
+)
+
+data class ManageMenuItemRequest(
+    val action: String,
+    val food_id: Int? = null,
+    val category_id: Int? = null,
+    val name: String? = null,
+    val image: String? = null,
+    val description: String? = null,
+    val status: String? = null
+)
+
+data class PendingOrderItemDto(
+    val order_item_id: Int,
+    val order_id: Int,
+    val session_id: Int,
+    val table_id: Int,
+    val table_code: String,
+    val table_name: String,
+    val food_id: Int,
+    val food_name: String,
+    val quantity: Int,
+    val note: String?,
+    val status: String,
+    val created_at: String?
+)
+
+data class OrderItemActionRequest(
+    val order_item_id: Int
+)
+
+data class MutationResultDto(
+    val session_id: Int? = null,
+    val category_id: Int? = null,
+    val food_id: Int? = null,
+    val order_item_id: Int? = null,
+    val status: String? = null
+)
+
+data class TableCheckRequest(
+    val table_code: String
+)
+
+data class UserTableDto(
+    val id: Int,
+    val table_code: String,
+    val table_name: String,
+    val status: String
+)
+
+data class UserComboDto(
+    val id: Int,
+    @SerializedName(value = "name", alternate = ["combo_name"])
+    val name: String,
+    val price_per_person: String,
+    val description: String?,
+    val status: String
+)
+
+data class UserSessionDto(
+    val id: Int,
+    val table_id: Int,
+    val combo_id: Int,
+    val paid_guest_count: Int,
+    val free_child_count: Int,
+    val payment_method: String?,
+    val payment_status: String?,
+    val status: String,
+    val total_amount: String,
+    val start_time: String?,
+    val end_time: String? = null,
+    val table_code: String? = null,
+    val table_name: String? = null,
+    val combo_name: String? = null
+)
+
+data class TableCheckResponseDto(
+    val table: UserTableDto,
+    val session: UserSessionDto?
+)
+
+data class CreateSessionRequest(
+    val table_code: String,
+    val combo_id: Int,
+    val paid_guest_count: Int,
+    val free_child_count: Int,
+    val payment_method: String
+)
+
+data class CreateSessionResponseDto(
+    val session_id: Int,
+    val table_id: Int,
+    val combo: UserComboDto?,
+    val total_amount: String,
+    val status: String
+)
+
 interface ApiService {
 
-    @POST("api/admin/login.php")
-    suspend fun adminLogin(
-        @Body request: AdminLoginRequest
-    ): Response<ApiResponse<AdminUserDto>>
+    @POST("api/auth/login.php")
+    suspend fun login(
+        @Body request: AuthLoginRequest
+    ): Response<ApiResponse<AuthUserDto>>
+
+    @POST("api/auth/register.php")
+    suspend fun register(
+        @Body request: AuthRegisterRequest
+    ): Response<ApiResponse<AuthUserDto>>
 
     @GET("api/admin/get_tables.php")
     suspend fun getTables(): Response<ApiResponse<List<TableDto>>>
@@ -105,4 +281,69 @@ interface ApiService {
     suspend fun confirmPayment(
         @Body request: ConfirmPaymentRequest
     ): Response<ApiResponse<ConfirmPaymentDataDto>>
+
+    @POST("api/admin/close_table.php")
+    suspend fun closeTable(
+        @Body request: CloseTableRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @GET("api/admin/get_dashboard_stats.php")
+    suspend fun getDashboardStats(): Response<ApiResponse<DashboardStatsDto>>
+
+    @GET("api/admin/get_categories.php")
+    suspend fun getCategories(): Response<ApiResponse<List<CategoryDto>>>
+
+    @POST("api/admin/manage_category.php")
+    suspend fun manageCategory(
+        @Body request: ManageCategoryRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @GET("api/admin/get_menu_items.php")
+    suspend fun getMenuItems(): Response<ApiResponse<List<MenuItemDto>>>
+
+    @POST("api/admin/manage_menu_item.php")
+    suspend fun manageMenuItem(
+        @Body request: ManageMenuItemRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @GET("api/admin/get_pending_orders.php")
+    suspend fun getPendingOrders(): Response<ApiResponse<List<PendingOrderItemDto>>>
+
+    @POST("api/admin/approve_order_item.php")
+    suspend fun approveOrderItem(
+        @Body request: OrderItemActionRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @POST("api/admin/reject_order_item.php")
+    suspend fun rejectOrderItem(
+        @Body request: OrderItemActionRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @POST("api/admin/mark_item_served.php")
+    suspend fun markItemServed(
+        @Body request: OrderItemActionRequest
+    ): Response<ApiResponse<MutationResultDto>>
+
+    @POST("api/user/check_table.php")
+    suspend fun checkTable(
+        @Body request: TableCheckRequest
+    ): Response<ApiResponse<TableCheckResponseDto>>
+
+    @GET("api/user/get_combos.php")
+    suspend fun getUserCombos(): Response<ApiResponse<List<UserComboDto>>>
+
+    @POST("api/user/create_session.php")
+    suspend fun createUserSession(
+        @Body request: CreateSessionRequest
+    ): Response<ApiResponse<CreateSessionResponseDto>>
+
+    @GET("api/user/get_session_status.php")
+    suspend fun getUserSessionStatus(
+        @Query("session_id") sessionId: Int
+    ): Response<ApiResponse<UserSessionDto>>
+
+    @GET("api/user/get_menu_by_combo.php")
+    suspend fun getMenuByCombo(
+        @Query("combo_id") comboId: Int
+    ): Response<ApiResponse<List<MenuItemDto>>>
 }

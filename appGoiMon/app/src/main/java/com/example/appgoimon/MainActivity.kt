@@ -4,11 +4,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.appgoimon.data.remote.AuthUserDto
 import com.example.appgoimon.ui.screen.admin.AdminDashboardScreen
 import com.example.appgoimon.ui.screen.admin.AdminLoginScreen
-import com.example.appgoimon.ui.screen.admin.ManageTableScreen
+import com.example.appgoimon.ui.screen.user.ComboAndGuestScreen
+import com.example.appgoimon.ui.screen.user.SelectTableScreen
+import com.example.appgoimon.ui.screen.user.TableOrderScreen
+import com.example.appgoimon.ui.screen.user.WaitingPaymentScreen
+import com.example.appgoimon.viewmodel.OrderViewModel
+import com.example.appgoimon.viewmodel.UserOrderStep
+import java.util.Locale
 import com.example.appgoimon.ui.theme.AppGoiMonTheme
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,35 +32,96 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            AppGoiMonTheme {
-                var isLoggedIn by remember { mutableStateOf(false) }
-                var selectedTableId by remember { mutableStateOf<Int?>(null) }
+            AppGoiMonTheme(
+                darkTheme = false,
+                dynamicColor = false
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    var currentUser by remember { mutableStateOf<AuthUserDto?>(null) }
+                    val currentRole = currentUser?.role?.lowercase(Locale.ROOT)
+                    val orderViewModel: OrderViewModel = viewModel()
+                    val orderUiState by orderViewModel.uiState.collectAsState()
 
-                when {
-                    !isLoggedIn -> {
-                        AdminLoginScreen(
-                            onLoginSuccess = {
-                                isLoggedIn = true
-                                selectedTableId = null
-                            }
-                        )
+                    fun logout() {
+                        currentUser = null
+                        orderViewModel.backToTableEntry()
                     }
 
-                    selectedTableId == null -> {
-                        AdminDashboardScreen(
-                            onTableClick = { tableId ->
-                                selectedTableId = tableId
-                            }
-                        )
-                    }
+                    when {
+                        currentUser == null -> {
+                            AdminLoginScreen(
+                                onAuthSuccess = { user ->
+                                    currentUser = user
+                                    orderViewModel.backToTableEntry()
+                                }
+                            )
+                        }
 
-                    else -> {
-                        ManageTableScreen(
-                            tableId = selectedTableId!!,
-                            onBackClick = {
-                                selectedTableId = null
+                        currentRole == "user" -> {
+                            when (orderUiState.step) {
+                                UserOrderStep.TABLE_ENTRY -> {
+                                    SelectTableScreen(
+                                        user = currentUser!!,
+                                        uiState = orderUiState,
+                                        onTableCodeChange = orderViewModel::onTableCodeChange,
+                                        onSubmit = orderViewModel::checkTable,
+                                        onLogout = ::logout
+                                    )
+                                }
+
+                                UserOrderStep.COMBO_SETUP -> {
+                                    ComboAndGuestScreen(
+                                        uiState = orderUiState,
+                                        onBack = orderViewModel::backToTableEntry,
+                                        onLogout = ::logout,
+                                        onRetryCombos = orderViewModel::loadCombos,
+                                        onComboSelected = orderViewModel::selectCombo,
+                                        onPaidGuestChange = orderViewModel::onPaidGuestCountChange,
+                                        onFreeChildChange = orderViewModel::onFreeChildCountChange,
+                                        onPaymentMethodChange = orderViewModel::onPaymentMethodChange,
+                                        onCreateSession = orderViewModel::createSession
+                                    )
+                                }
+
+                                UserOrderStep.WAITING_PAYMENT -> {
+                                    WaitingPaymentScreen(
+                                        user = currentUser!!,
+                                        uiState = orderUiState,
+                                        onRefresh = orderViewModel::refreshSessionStatus,
+                                        onBack = orderViewModel::backToTableEntry,
+                                        onLogout = ::logout
+                                    )
+                                }
+
+                                UserOrderStep.ACTIVE_MENU -> {
+                                    TableOrderScreen(
+                                        user = currentUser!!,
+                                        uiState = orderUiState,
+                                        onBack = orderViewModel::backToTableEntry,
+                                        onLogout = ::logout,
+                                        onRetryMenu = { orderViewModel.loadMenu() }
+                                    )
+                                }
                             }
-                        )
+                        }
+
+                        currentRole == "admin" -> {
+                            AdminDashboardScreen(
+                                onLogout = ::logout
+                            )
+                        }
+
+                        else -> {
+                            AdminLoginScreen(
+                                onAuthSuccess = { user ->
+                                    currentUser = user
+                                    orderViewModel.backToTableEntry()
+                                }
+                            )
+                        }
                     }
                 }
             }

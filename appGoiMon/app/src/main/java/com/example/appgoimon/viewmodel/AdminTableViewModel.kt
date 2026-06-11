@@ -15,7 +15,6 @@ data class AdminTableUiState(
     val selectedTableSession: TableSessionResponseDto? = null,
     val errorMessage: String = "",
     val successMessage: String = ""
-
 )
 
 class AdminTableViewModel : ViewModel() {
@@ -72,7 +71,6 @@ class AdminTableViewModel : ViewModel() {
         }
     }
 
-
     fun confirmPayment(sessionId: Int, tableId: Int) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
@@ -94,6 +92,33 @@ class AdminTableViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = error.message ?: "Xác nhận thanh toán thất bại"
+                )
+            }
+        }
+    }
+
+    fun closeTable(sessionId: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = "",
+                successMessage = ""
+            )
+
+            val result = repository.closeTable(sessionId)
+
+            result.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    selectedTableSession = null,
+                    successMessage = "Da dong ban"
+                )
+
+                loadTables()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error.message ?: "Dong ban that bai"
                 )
             }
         }

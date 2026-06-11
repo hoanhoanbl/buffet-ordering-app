@@ -1,11 +1,12 @@
 package com.example.appgoimon.data.repository
 
+import com.example.appgoimon.data.remote.ConfirmPaymentDataDto
+import com.example.appgoimon.data.remote.ConfirmPaymentRequest
+import com.example.appgoimon.data.remote.CloseTableRequest
+import com.example.appgoimon.data.remote.MutationResultDto
 import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.data.remote.TableDto
 import com.example.appgoimon.data.remote.TableSessionResponseDto
-import com.example.appgoimon.data.remote.ConfirmPaymentRequest
-import com.example.appgoimon.data.remote.ConfirmPaymentDataDto
-
 
 class TableRepository {
 
@@ -39,7 +40,6 @@ class TableRepository {
         }
     }
 
-
     suspend fun confirmPayment(sessionId: Int): Result<ConfirmPaymentDataDto> {
         return try {
             val response = RetrofitClient.apiService.confirmPayment(
@@ -55,6 +55,24 @@ class TableRepository {
             }
         } catch (e: Exception) {
             Result.failure(Exception("Không thể kết nối server: ${e.message}"))
+        }
+    }
+
+    suspend fun closeTable(sessionId: Int): Result<MutationResultDto> {
+        return try {
+            val response = RetrofitClient.apiService.closeTable(
+                CloseTableRequest(session_id = sessionId)
+            )
+
+            val body = response.body()
+
+            if (response.isSuccessful && body != null && body.success && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Khong dong duoc ban"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
         }
     }
 }
