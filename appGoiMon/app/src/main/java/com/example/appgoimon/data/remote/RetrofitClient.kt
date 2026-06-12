@@ -1,11 +1,12 @@
 package com.example.appgoimon.data.remote
 
+import com.example.appgoimon.BuildConfig
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://192.168.1.206/appOrder/appGoiMon_API/"
+    const val BASE_URL = BuildConfig.BASE_URL
 
     val apiService: ApiService by lazy {
         Retrofit.Builder()
