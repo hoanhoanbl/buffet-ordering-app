@@ -10,8 +10,8 @@ function db(): PDO
         return $pdo;
     }
 
-    $host = '127.0.0.1';
-    $database = 'buffet_order_app';
+    $host = getenv('DB_HOST') ?: '127.0.0.1';
+    $database = 'buffet_ordering';
     $username = 'root';
     $password = '';
 

@@ -18,7 +18,7 @@ run_endpoint(function (): void {
 
     $pdo->beginTransaction();
     $pdo->prepare("UPDATE table_sessions SET payment_status = 'paid', status = 'active' WHERE id = ?")->execute([$sessionId]);
-    $pdo->prepare("UPDATE tables SET status = 'occupied' WHERE id = ?")->execute([(int) $session['table_id']]);
+    $pdo->prepare("UPDATE restaurant_tables SET status = 'occupied' WHERE id = ?")->execute([(int) $session['table_id']]);
     $pdo->commit();
 
     json_response(true, 'Đã xác nhận thanh toán và mở bàn', ['session_id' => $sessionId, 'status' => 'active']);

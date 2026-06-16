@@ -26,13 +26,13 @@ run_endpoint(function (): void {
 
         $pdo->beginTransaction();
         if ($action === 'create') {
-            $stmt = $pdo->prepare('INSERT INTO buffet_combos (name, price_per_person, description, status) VALUES (?, ?, ?, ?)');
+            $stmt = $pdo->prepare('INSERT INTO buffet_combos (combo_name, price_per_person, description, status) VALUES (?, ?, ?, ?)');
             $stmt->execute([$name, $price, $description, $status]);
             $comboId = (int) $pdo->lastInsertId();
         } else {
             $comboId = int_param($params, 'combo_id');
             ensure_positive($comboId, 'Thiếu combo_id');
-            $stmt = $pdo->prepare('UPDATE buffet_combos SET name = ?, price_per_person = ?, description = ?, status = ? WHERE id = ?');
+            $stmt = $pdo->prepare('UPDATE buffet_combos SET combo_name = ?, price_per_person = ?, description = ?, status = ? WHERE id = ?');
             $stmt->execute([$name, $price, $description, $status, $comboId]);
         }
 
@@ -48,9 +48,9 @@ run_endpoint(function (): void {
     ensure_positive($comboId, 'Thiếu combo_id');
 
     if ($action === 'delete') {
-        $stmt = $pdo->prepare("UPDATE buffet_combos SET status = 'deleted' WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE buffet_combos SET status = 'inactive' WHERE id = ?");
         $stmt->execute([$comboId]);
-        json_response(true, 'Đã xóa combo', ['combo_id' => $comboId, 'status' => 'deleted']);
+        json_response(true, 'Đã xóa combo', ['combo_id' => $comboId, 'status' => 'inactive']);
     }
 
     $foodIds = $params['food_ids'] ?? [];
@@ -67,8 +67,8 @@ run_endpoint(function (): void {
 
 function sync_combo_foods(PDO $pdo, int $comboId, array $foodIds): void
 {
-    $pdo->prepare('DELETE FROM combo_foods WHERE combo_id = ?')->execute([$comboId]);
-    $insert = $pdo->prepare('INSERT INTO combo_foods (combo_id, food_id) VALUES (?, ?)');
+    $pdo->prepare('DELETE FROM combo_menu_items WHERE combo_id = ?')->execute([$comboId]);
+    $insert = $pdo->prepare('INSERT INTO combo_menu_items (combo_id, menu_item_id) VALUES (?, ?)');
     $uniqueFoodIds = array_values(array_unique(array_filter(array_map('intval', $foodIds), fn (int $id): bool => $id > 0)));
 
     foreach ($uniqueFoodIds as $foodId) {

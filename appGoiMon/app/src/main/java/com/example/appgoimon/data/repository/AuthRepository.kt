@@ -27,7 +27,7 @@ class AuthRepository {
                 Result.failure(Exception(body?.message ?: "Dang nhap that bai"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -55,7 +55,7 @@ class AuthRepository {
                 Result.failure(Exception(body?.message ?: "Dang ky that bai"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 }

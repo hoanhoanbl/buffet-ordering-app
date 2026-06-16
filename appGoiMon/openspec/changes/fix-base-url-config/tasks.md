@@ -18,5 +18,5 @@
 
 - [x] 4.1 Perform clean build (./gradlew clean assembleDebug) to verify BuildConfig generation
 - [x] 4.2 Manually inspect BuildConfig.BASE_URL value in generated sources to confirm correct URL
-- [ ] 4.3 Install app on device/emulator and verify API connection works (test any API call like login or check table)
-- [ ] 4.4 Test with different base.url values (emulator localhost vs network IP) to verify configuration flexibility
+- [x] 4.3 Install app on device/emulator and verify API connection works (test any API call like login or check table)
+- [x] 4.4 Test with different base.url values (emulator localhost vs network IP) to verify configuration flexibility

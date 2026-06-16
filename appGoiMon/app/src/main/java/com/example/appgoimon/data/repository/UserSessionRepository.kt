@@ -3,6 +3,7 @@ package com.example.appgoimon.data.repository
 import com.example.appgoimon.data.remote.CreateSessionRequest
 import com.example.appgoimon.data.remote.CreateSessionResponseDto
 import com.example.appgoimon.data.remote.MenuItemDto
+import com.example.appgoimon.data.remote.OrderHistoryDto
 import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.data.remote.TableCheckRequest
 import com.example.appgoimon.data.remote.TableCheckResponseDto
@@ -96,6 +97,21 @@ class UserSessionRepository {
                 Result.success(body.data)
             } else {
                 Result.failure(Exception(body?.message ?: "Khong lay duoc menu"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+        }
+    }
+
+    suspend fun getOrderHistory(sessionId: Int): Result<List<OrderHistoryDto>> {
+        return try {
+            val response = RetrofitClient.apiService.getOrderHistory(sessionId)
+            val body = response.body()
+
+            if (response.isSuccessful && body != null && body.success && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Khong lay duoc lich su goi mon"))
             }
         } catch (e: Exception) {
             Result.failure(Exception("Khong the ket noi server: ${e.message}"))

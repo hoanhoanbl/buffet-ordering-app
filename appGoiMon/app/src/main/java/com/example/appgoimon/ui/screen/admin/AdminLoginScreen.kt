@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -28,14 +29,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.SubcomposeAsyncImage
 import com.example.appgoimon.data.remote.AuthUserDto
+import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.ui.theme.AmberPrimary
 import com.example.appgoimon.ui.theme.AmberPrimaryDark
 import com.example.appgoimon.ui.theme.InkBrown
@@ -79,17 +84,39 @@ fun AdminLoginScreen(
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Logo
+                SubcomposeAsyncImage(
+                    model = "${RetrofitClient.BASE_URL}uploads/foods/logo.jpg",
+                    contentDescription = "Logo",
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(90.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    },
+                    error = {
+                        Box(modifier = Modifier.fillMaxSize())
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        text = "KichiKichi",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = OrangeAccent,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = if (uiState.isRegisterMode) "Dang ky" else "Dang nhap",
+                        text = if (uiState.isRegisterMode) "Đăng ký" else "Đăng nhập",
                         style = MaterialTheme.typography.headlineMedium,
                         color = InkBrown,
                         fontWeight = FontWeight.Bold
@@ -100,7 +127,7 @@ fun AdminLoginScreen(
                     OutlinedTextField(
                         value = uiState.fullName,
                         onValueChange = viewModel::onFullNameChange,
-                        label = { Text("Ho ten") },
+                        label = { Text("Họ tên") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !uiState.isLoading
@@ -109,7 +136,7 @@ fun AdminLoginScreen(
                     OutlinedTextField(
                         value = uiState.phone,
                         onValueChange = viewModel::onPhoneChange,
-                        label = { Text("So dien thoai") },
+                        label = { Text("Số điện thoại") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !uiState.isLoading,
@@ -120,7 +147,7 @@ fun AdminLoginScreen(
                 OutlinedTextField(
                     value = uiState.username,
                     onValueChange = viewModel::onUsernameChange,
-                    label = { Text("Ten dang nhap") },
+                    label = { Text("Tên đăng nhập") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !uiState.isLoading
@@ -129,7 +156,7 @@ fun AdminLoginScreen(
                 OutlinedTextField(
                     value = uiState.password,
                     onValueChange = viewModel::onPasswordChange,
-                    label = { Text("Mat khau") },
+                    label = { Text("Mật khẩu") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !uiState.isLoading,
@@ -140,7 +167,7 @@ fun AdminLoginScreen(
                     OutlinedTextField(
                         value = uiState.confirmPassword,
                         onValueChange = viewModel::onConfirmPasswordChange,
-                        label = { Text("Nhap lai mat khau") },
+                        label = { Text("Nhập lại mật khẩu") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !uiState.isLoading,
@@ -175,7 +202,7 @@ fun AdminLoginScreen(
                             color = Color.White
                         )
                     } else {
-                        Text(if (uiState.isRegisterMode) "Dang ky" else "Dang nhap")
+                        Text(if (uiState.isRegisterMode) "Đăng ký" else "Đăng nhập")
                     }
                 }
 
@@ -185,7 +212,7 @@ fun AdminLoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (uiState.isRegisterMode) "Da co tai khoan?" else "Chua co tai khoan?",
+                        text = if (uiState.isRegisterMode) "Đã có tài khoản?" else "Chưa có tài khoản?",
                         color = MutedBrown
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -194,7 +221,7 @@ fun AdminLoginScreen(
                         enabled = !uiState.isLoading
                     ) {
                         Text(
-                            text = if (uiState.isRegisterMode) "Dang nhap" else "Dang ky",
+                            text = if (uiState.isRegisterMode) "Đăng nhập" else "Đăng ký",
                             color = AmberPrimary
                         )
                     }

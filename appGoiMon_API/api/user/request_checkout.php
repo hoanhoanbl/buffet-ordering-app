@@ -17,9 +17,8 @@ run_endpoint(function (): void {
     }
 
     $pdo->beginTransaction();
-    $pdo->prepare("UPDATE table_sessions SET status = 'checkout_requested' WHERE id = ?")->execute([$sessionId]);
-    $pdo->prepare("UPDATE tables SET status = 'checkout_requested' WHERE id = ?")->execute([(int) $session['table_id']]);
+    $pdo->prepare("UPDATE restaurant_tables SET status = 'waiting_payment' WHERE id = ?")->execute([(int) $session['table_id']]);
     $pdo->commit();
 
-    json_response(true, 'Đã gửi yêu cầu thanh toán', ['session_id' => $sessionId, 'status' => 'checkout_requested']);
+    json_response(true, 'Đã gửi yêu cầu thanh toán', ['session_id' => $sessionId, 'status' => 'waiting_payment']);
 });

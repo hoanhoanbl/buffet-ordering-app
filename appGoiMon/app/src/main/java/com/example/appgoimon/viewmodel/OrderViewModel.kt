@@ -2,22 +2,33 @@ package com.example.appgoimon.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.appgoimon.data.remote.CreateOrderItemRequest
+import com.example.appgoimon.data.remote.CreateOrderRequest
 import com.example.appgoimon.data.remote.CreateSessionResponseDto
 import com.example.appgoimon.data.remote.MenuItemDto
+import com.example.appgoimon.data.remote.OrderHistoryDto
 import com.example.appgoimon.data.remote.UserComboDto
 import com.example.appgoimon.data.remote.UserSessionDto
 import com.example.appgoimon.data.remote.UserTableDto
+import com.example.appgoimon.data.repository.OrderRepository
 import com.example.appgoimon.data.repository.UserSessionRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 enum class UserOrderStep {
     TABLE_ENTRY,
     COMBO_SETUP,
-    WAITING_PAYMENT,
     ACTIVE_MENU
 }
+
+data class CartItem(
+    val menuItem: MenuItemDto,
+    val quantity: Int,
+    val note: String = ""
+)
 
 data class UserOrderUiState(
     val step: UserOrderStep = UserOrderStep.TABLE_ENTRY,
@@ -31,8 +42,14 @@ data class UserOrderUiState(
     val freeChildCount: String = "0",
     val paymentMethod: String = "cash",
     val menuItems: List<MenuItemDto> = emptyList(),
+    val cartItems: List<CartItem> = emptyList(),
+    val searchQuery: String = "",
+    val selectedCategoryName: String? = null,
+    val orderHistory: List<OrderHistoryDto> = emptyList(),
     val isLoading: Boolean = false,
     val isMenuLoading: Boolean = false,
+    val isSubmittingOrder: Boolean = false,
+    val isLoadingHistory: Boolean = false,
     val errorMessage: String = "",
     val successMessage: String = ""
 ) {
@@ -47,18 +64,51 @@ data class UserOrderUiState(
 
     val totalPreview: Double
         get() = (selectedCombo?.price_per_person?.toDoubleOrNull() ?: 0.0) * paidGuestCountValue
+
+    val cartItemCount: Int
+        get() = cartItems.sumOf { it.quantity }
+
+    val isSessionExpired: Boolean
+        get() = session?.is_expired == true || session?.status == "expired"
+
+    val remainingMinutes: Int
+        get() = session?.remaining_minutes ?: 0
+
+    val categories: List<String>
+        get() = menuItems
+            .mapNotNull { it.category_name }
+            .distinct()
+            .sorted()
+
+    val filteredMenuItems: List<MenuItemDto>
+        get() {
+            var items = menuItems
+
+            if (selectedCategoryName != null) {
+                items = items.filter { it.category_name == selectedCategoryName }
+            }
+
+            if (searchQuery.isNotEmpty()) {
+                items = items.filter {
+                    it.name.lowercase(Locale.ROOT).contains(searchQuery.lowercase(Locale.ROOT))
+                }
+            }
+
+            return items
+        }
 }
 
 class OrderViewModel : ViewModel() {
 
     private val repository = UserSessionRepository()
+    private val orderRepository = OrderRepository()
 
     private val _uiState = MutableStateFlow(UserOrderUiState())
     val uiState: StateFlow<UserOrderUiState> = _uiState
 
     fun onTableCodeChange(value: String) {
         _uiState.value = _uiState.value.copy(
-            tableCode = value.uppercase(),
+            tableCode = value.uppercase(Locale.ROOT),
             errorMessage = ""
         )
     }
@@ -83,16 +133,19 @@ class OrderViewModel : ViewModel() {
                             table = response.table,
                             session = null,
                             createSessionResult = null,
+                            cartItems = emptyList(),
+                            orderHistory = emptyList(),
                             step = UserOrderStep.COMBO_SETUP
                         )
                         loadCombos()
                     }
 
-                    session.status == "active" -> {
+                    session.status == "active" && session.is_expired != true -> {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             table = response.table,
                             session = session,
+                            cartItems = emptyList(),
                             step = UserOrderStep.ACTIVE_MENU
                         )
                         loadMenu(session.combo_id)
@@ -103,8 +156,11 @@ class OrderViewModel : ViewModel() {
                             isLoading = false,
                             table = response.table,
                             session = session,
-                            step = UserOrderStep.WAITING_PAYMENT
+                            cartItems = emptyList(),
+                            step = UserOrderStep.ACTIVE_MENU,
+                            errorMessage = "Phien buffet da het thoi gian"
                         )
+                        loadOrderHistory(session.id)
                     }
                 }
             }.onFailure { error ->
@@ -158,6 +214,14 @@ class OrderViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(paymentMethod = value, errorMessage = "")
     }
 
+    fun onSearchQueryChange(value: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = value, errorMessage = "")
+    }
+
+    fun onCategorySelected(categoryName: String?) {
+        _uiState.value = _uiState.value.copy(selectedCategoryName = categoryName, errorMessage = "")
+    }
+
     fun createSession() {
         val state = _uiState.value
         val comboId = state.selectedComboId
@@ -172,18 +236,18 @@ class OrderViewModel : ViewModel() {
             }
 
             paidGuests <= 0 -> {
-                _uiState.value = state.copy(errorMessage = "So khach tra phi phai lon hon 0")
+                _uiState.value = state.copy(errorMessage = "So khach tinh tien phai lon hon 0")
                 return
             }
 
-            freeChildren < 0 -> {
-                _uiState.value = state.copy(errorMessage = "So tre em mien phi khong hop le")
+            state.paymentMethod !in listOf("cash", "qr") -> {
+                _uiState.value = state.copy(errorMessage = "Vui long chon phuong thuc thanh toan")
                 return
             }
         }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "")
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "", successMessage = "")
             val result = repository.createSession(
                 tableCode = tableCode,
                 comboId = comboId,
@@ -193,15 +257,15 @@ class OrderViewModel : ViewModel() {
             )
 
             result.onSuccess { created ->
-                val session = UserSessionDto(
+                val session = created.session ?: UserSessionDto(
                     id = created.session_id,
                     table_id = created.table_id,
                     combo_id = comboId,
                     paid_guest_count = paidGuests,
                     free_child_count = freeChildren,
                     payment_method = state.paymentMethod,
-                    payment_status = "unpaid",
-                    status = created.status,
+                    payment_status = "paid",
+                    status = "active",
                     total_amount = created.total_amount,
                     start_time = null,
                     table_code = tableCode,
@@ -212,9 +276,10 @@ class OrderViewModel : ViewModel() {
                     isLoading = false,
                     session = session,
                     createSessionResult = created,
-                    step = UserOrderStep.WAITING_PAYMENT,
-                    successMessage = "Da tao phien, cho admin xac nhan"
+                    step = UserOrderStep.ACTIVE_MENU,
+                    successMessage = "Da thanh toan, bat dau phien buffet 100 phut"
                 )
+                loadMenu(session.combo_id)
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -228,21 +293,23 @@ class OrderViewModel : ViewModel() {
         val sessionId = _uiState.value.session?.id ?: _uiState.value.createSessionResult?.session_id ?: return
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "")
             val result = repository.getSessionStatus(sessionId)
 
             result.onSuccess { session ->
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
                     session = session,
-                    step = if (session.status == "active") UserOrderStep.ACTIVE_MENU else UserOrderStep.WAITING_PAYMENT
+                    step = UserOrderStep.ACTIVE_MENU,
+                    errorMessage = if (session.is_expired == true || session.status == "expired") {
+                        "Phien buffet da het thoi gian"
+                    } else {
+                        ""
+                    }
                 )
-                if (session.status == "active") {
+                if (session.is_expired != true && session.status == "active") {
                     loadMenu(session.combo_id)
                 }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    isLoading = false,
                     errorMessage = error.message ?: "Khong cap nhat duoc trang thai"
                 )
             }
@@ -251,6 +318,10 @@ class OrderViewModel : ViewModel() {
 
     fun loadMenu(comboId: Int? = _uiState.value.session?.combo_id) {
         val id = comboId ?: return
+        if (_uiState.value.isSessionExpired) {
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isMenuLoading = true, errorMessage = "")
             val result = repository.getMenuByCombo(id)
@@ -273,11 +344,149 @@ class OrderViewModel : ViewModel() {
         _uiState.value = UserOrderUiState()
     }
 
-    fun backToComboSetup() {
-        _uiState.value = _uiState.value.copy(
-            step = UserOrderStep.COMBO_SETUP,
-            errorMessage = "",
-            successMessage = ""
-        )
+    fun addToCart(menuItem: MenuItemDto) {
+        if (_uiState.value.isSessionExpired) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Da het thoi gian goi mon")
+            return
+        }
+
+        val currentCart = _uiState.value.cartItems.toMutableList()
+        val existingItemIndex = currentCart.indexOfFirst { it.menuItem.id == menuItem.id }
+
+        if (existingItemIndex >= 0) {
+            val existingItem = currentCart[existingItemIndex]
+            currentCart[existingItemIndex] = existingItem.copy(quantity = existingItem.quantity + 1)
+        } else {
+            currentCart.add(CartItem(menuItem = menuItem, quantity = 1, note = ""))
+        }
+
+        _uiState.value = _uiState.value.copy(cartItems = currentCart, errorMessage = "")
+    }
+
+    fun removeFromCart(menuItem: MenuItemDto) {
+        val currentCart = _uiState.value.cartItems.filter { it.menuItem.id != menuItem.id }
+        _uiState.value = _uiState.value.copy(cartItems = currentCart)
+    }
+
+    fun updateCartItemQuantity(menuItem: MenuItemDto, newQuantity: Int) {
+        if (newQuantity <= 0) {
+            removeFromCart(menuItem)
+            return
+        }
+
+        val currentCart = _uiState.value.cartItems.toMutableList()
+        val itemIndex = currentCart.indexOfFirst { it.menuItem.id == menuItem.id }
+
+        if (itemIndex >= 0) {
+            currentCart[itemIndex] = currentCart[itemIndex].copy(quantity = newQuantity)
+            _uiState.value = _uiState.value.copy(cartItems = currentCart)
+        }
+    }
+
+    fun updateCartItemNote(menuItem: MenuItemDto, note: String) {
+        val currentCart = _uiState.value.cartItems.toMutableList()
+        val itemIndex = currentCart.indexOfFirst { it.menuItem.id == menuItem.id }
+
+        if (itemIndex >= 0) {
+            currentCart[itemIndex] = currentCart[itemIndex].copy(note = note)
+            _uiState.value = _uiState.value.copy(cartItems = currentCart)
+        }
+    }
+
+    fun clearMessages() {
+        _uiState.value = _uiState.value.copy(errorMessage = "", successMessage = "")
+    }
+
+    fun loadOrderHistory() {
+        loadOrderHistory(_uiState.value.session?.id ?: return)
+    }
+
+    private fun loadOrderHistory(sessionId: Int) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingHistory = true, errorMessage = "")
+            val result = repository.getOrderHistory(sessionId)
+
+            result.onSuccess { history ->
+                _uiState.value = _uiState.value.copy(
+                    isLoadingHistory = false,
+                    orderHistory = history
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoadingHistory = false,
+                    errorMessage = error.message ?: "Khong lay duoc lich su goi mon"
+                )
+            }
+        }
+    }
+
+    fun refreshOrderHistory() {
+        loadOrderHistory()
+    }
+
+    fun submitOrder() {
+        val currentState = _uiState.value
+
+        if (currentState.isSessionExpired) {
+            _uiState.value = currentState.copy(errorMessage = "Da het thoi gian dung bua, khong the goi them mon")
+            return
+        }
+
+        if (currentState.cartItems.isEmpty()) {
+            _uiState.value = currentState.copy(errorMessage = "Gio hang trong")
+            return
+        }
+
+        val sessionId = currentState.session?.id
+        if (sessionId == null) {
+            _uiState.value = currentState.copy(errorMessage = "Phien khong hop le")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isSubmittingOrder = true,
+                errorMessage = "",
+                successMessage = ""
+            )
+
+            val orderItems = currentState.cartItems.map { cartItem ->
+                CreateOrderItemRequest(
+                    food_id = cartItem.menuItem.id,
+                    quantity = cartItem.quantity,
+                    note = cartItem.note
+                )
+            }
+
+            val request = CreateOrderRequest(
+                session_id = sessionId,
+                items = orderItems,
+                note = ""
+            )
+
+            val result = orderRepository.createOrder(request)
+
+            result.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    isSubmittingOrder = false,
+                    successMessage = "Da gui ${currentState.cartItems.sumOf { it.quantity }} mon thanh cong",
+                    cartItems = emptyList()
+                )
+                loadOrderHistory(sessionId)
+                viewModelScope.launch {
+                    delay(3000)
+                    _uiState.value = _uiState.value.copy(successMessage = "")
+                }
+            }.onFailure { error ->
+                val errorMsg = error.message ?: "Khong the goi mon"
+                _uiState.value = _uiState.value.copy(
+                    isSubmittingOrder = false,
+                    errorMessage = errorMsg
+                )
+                if (errorMsg.contains("het thoi gian", ignoreCase = true)) {
+                    refreshSessionStatus()
+                }
+            }
+        }
     }
 }

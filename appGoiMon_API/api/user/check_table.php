@@ -9,19 +9,28 @@ run_endpoint(function (): void {
     $table = fetch_table($pdo, $params);
 
     if (!$table) {
-        json_response(false, 'Bàn không tồn tại', null, 404);
+        json_response(false, 'Sai ma ban', null, 404);
     }
+    release_expired_sessions($pdo, (int) $table['id']);
+    $table = fetch_table($pdo, $params) ?: $table;
 
     $stmt = $pdo->prepare(
-        'SELECT id, combo_id, paid_guest_count, free_child_count, payment_status, status, total_amount, start_time
-         FROM table_sessions
-         WHERE table_id = ? AND ' . active_session_condition() . '
-         ORDER BY id DESC LIMIT 1'
+        'SELECT ts.*, t.table_code, t.table_name, c.combo_name AS combo_name
+         FROM table_sessions ts
+         JOIN restaurant_tables t ON t.id = ts.table_id
+         JOIN buffet_combos c ON c.id = ts.combo_id
+         WHERE ts.table_id = ? AND ' . active_session_condition('ts') . '
+         ORDER BY ts.id DESC LIMIT 1'
     );
     $stmt->execute([(int) $table['id']]);
+    $session = $stmt->fetch();
 
-    json_response(true, 'Thành công', [
+    if ($session) {
+        $session = decorate_session($pdo, $session);
+    }
+
+    json_response(true, 'Thanh cong', [
         'table' => $table,
-        'session' => $stmt->fetch() ?: null,
+        'session' => $session ?: null,
     ]);
 });

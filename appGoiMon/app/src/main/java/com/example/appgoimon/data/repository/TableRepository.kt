@@ -1,8 +1,8 @@
 package com.example.appgoimon.data.repository
 
+import com.example.appgoimon.data.remote.CloseTableRequest
 import com.example.appgoimon.data.remote.ConfirmPaymentDataDto
 import com.example.appgoimon.data.remote.ConfirmPaymentRequest
-import com.example.appgoimon.data.remote.CloseTableRequest
 import com.example.appgoimon.data.remote.MutationResultDto
 import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.data.remote.TableDto
@@ -18,10 +18,10 @@ class TableRepository {
             if (response.isSuccessful && body != null && body.success && body.data != null) {
                 Result.success(body.data)
             } else {
-                Result.failure(Exception(body?.message ?: "Không lấy được danh sách bàn"))
+                Result.failure(Exception(body?.message ?: "Khong lay duoc danh sach ban"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Không thể kết nối server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -33,10 +33,10 @@ class TableRepository {
             if (response.isSuccessful && body != null && body.success && body.data != null) {
                 Result.success(body.data)
             } else {
-                Result.failure(Exception(body?.message ?: "Không lấy được chi tiết bàn"))
+                Result.failure(Exception(body?.message ?: "Khong lay duoc chi tiet ban"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Không thể kết nối server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -51,10 +51,10 @@ class TableRepository {
             if (response.isSuccessful && body != null && body.success && body.data != null) {
                 Result.success(body.data)
             } else {
-                Result.failure(Exception(body?.message ?: "Không xác nhận được thanh toán"))
+                Result.failure(Exception(body?.message ?: "Khong xac nhan duoc thanh toan"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Không thể kết nối server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -72,7 +72,7 @@ class TableRepository {
                 Result.failure(Exception(body?.message ?: "Khong dong duoc ban"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 }

@@ -7,7 +7,7 @@ function refresh_order_status(PDO $pdo, int $orderId): void
     $stmt = $pdo->prepare(
         "SELECT
             SUM(status = 'pending') AS pending_count,
-            SUM(status = 'processing') AS processing_count,
+            SUM(status = 'approved') AS approved_count,
             SUM(status = 'served') AS served_count,
             SUM(status = 'rejected') AS rejected_count,
             COUNT(*) AS total_count
@@ -22,8 +22,8 @@ function refresh_order_status(PDO $pdo, int $orderId): void
         $status = 'empty';
     } elseif ((int) ($row['pending_count'] ?? 0) > 0) {
         $status = 'pending';
-    } elseif ((int) ($row['processing_count'] ?? 0) > 0) {
-        $status = 'processing';
+    } elseif ((int) ($row['approved_count'] ?? 0) > 0) {
+        $status = 'approved';
     } elseif ((int) ($row['served_count'] ?? 0) > 0 && (int) ($row['rejected_count'] ?? 0) === 0) {
         $status = 'served';
     } elseif ((int) ($row['served_count'] ?? 0) > 0) {
@@ -40,13 +40,25 @@ function update_order_item_status(string $targetStatus, string $message): void
     $pdo = db();
     $params = input();
     $orderItemId = int_param($params, 'order_item_id');
-    ensure_positive($orderItemId, 'Thiếu order_item_id');
+    ensure_positive($orderItemId, 'Thieu order_item_id');
 
     $stmt = $pdo->prepare('SELECT id, order_id, status FROM order_items WHERE id = ?');
     $stmt->execute([$orderItemId]);
     $item = $stmt->fetch();
     if (!$item) {
-        json_response(false, 'Không tìm thấy món trong đơn', null, 404);
+        json_response(false, 'Khong tim thay mon trong don', null, 404);
+    }
+
+    $currentStatus = (string) $item['status'];
+    $valid = match ($targetStatus) {
+        'approved' => $currentStatus === 'pending',
+        'rejected' => $currentStatus === 'pending',
+        'served' => $currentStatus === 'approved',
+        default => false,
+    };
+
+    if (!$valid) {
+        json_response(false, "Khong the chuyen mon tu {$currentStatus} sang {$targetStatus}", null, 409);
     }
 
     $pdo->beginTransaction();

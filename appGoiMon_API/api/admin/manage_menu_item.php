@@ -24,7 +24,7 @@ run_endpoint(function (): void {
             json_response(false, 'Thiếu tên món', null, 422);
         }
 
-        $stmt = $pdo->prepare('INSERT INTO foods (category_id, name, image, description, status) VALUES (?, ?, ?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT INTO menu_items (category_id, item_name, image, description, status) VALUES (?, ?, ?, ?, ?)');
         $stmt->execute([$categoryId, $name, $image, $description, $status]);
         json_response(true, 'Đã thêm món', ['food_id' => (int) $pdo->lastInsertId()], 201);
     }
@@ -33,9 +33,9 @@ run_endpoint(function (): void {
     ensure_positive($foodId, 'Thiếu food_id');
 
     if ($action === 'delete') {
-        $stmt = $pdo->prepare("UPDATE foods SET status = 'deleted' WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE menu_items SET status = 'hidden' WHERE id = ?");
         $stmt->execute([$foodId]);
-        json_response(true, 'Đã xóa món', ['food_id' => $foodId, 'status' => 'deleted']);
+        json_response(true, 'Đã xóa món', ['food_id' => $foodId, 'status' => 'hidden']);
     }
 
     if ($action === 'set_status') {
@@ -43,7 +43,7 @@ run_endpoint(function (): void {
         if ($status === '') {
             json_response(false, 'Thiếu status', null, 422);
         }
-        $stmt = $pdo->prepare('UPDATE foods SET status = ? WHERE id = ?');
+        $stmt = $pdo->prepare('UPDATE menu_items SET status = ? WHERE id = ?');
         $stmt->execute([$status, $foodId]);
         json_response(true, 'Đã cập nhật trạng thái món', ['food_id' => $foodId, 'status' => $status]);
     }
@@ -60,8 +60,8 @@ run_endpoint(function (): void {
     }
 
     $stmt = $pdo->prepare(
-        'UPDATE foods
-         SET category_id = ?, name = ?, image = ?, description = ?, status = ?
+        'UPDATE menu_items
+         SET category_id = ?, item_name = ?, image = ?, description = ?, status = ?
          WHERE id = ?'
     );
     $stmt->execute([$categoryId, $name, $image, $description, $status, $foodId]);

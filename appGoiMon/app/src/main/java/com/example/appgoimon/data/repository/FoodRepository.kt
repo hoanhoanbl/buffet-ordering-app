@@ -18,7 +18,7 @@ class FoodRepository {
                 Result.failure(Exception(body?.message ?: "Khong lay duoc danh sach mon"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -92,7 +92,7 @@ class FoodRepository {
                 Result.failure(Exception(body?.message ?: "Cap nhat mon that bai"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 }
