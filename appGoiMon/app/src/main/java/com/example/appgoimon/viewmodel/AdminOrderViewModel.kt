@@ -10,11 +10,41 @@ import kotlinx.coroutines.launch
 
 data class AdminOrderUiState(
     val isLoading: Boolean = false,
-    val actionItemId: Int? = null,
-    val pendingItems: List<PendingOrderItemDto> = emptyList(),
+    val actionOrderId: Int? = null,
+    val selectedStatus: String = "pending",
+    val items: List<PendingOrderItemDto> = emptyList(),
     val errorMessage: String = "",
     val successMessage: String = ""
-)
+) {
+    val orderGroups: List<AdminOrderGroup>
+        get() = items
+            .groupBy { it.order_id }
+            .map { (orderId, orderItems) ->
+                val firstItem = orderItems.first()
+                AdminOrderGroup(
+                    orderId = orderId,
+                    sessionId = firstItem.session_id,
+                    tableName = firstItem.table_name,
+                    tableCode = firstItem.table_code,
+                    status = firstItem.status,
+                    createdAt = firstItem.created_at,
+                    items = orderItems
+                )
+            }
+}
+
+data class AdminOrderGroup(
+    val orderId: Int,
+    val sessionId: Int,
+    val tableName: String,
+    val tableCode: String,
+    val status: String,
+    val createdAt: String?,
+    val items: List<PendingOrderItemDto>
+) {
+    val totalQuantity: Int = items.sumOf { it.quantity }
+    val itemCount: Int = items.size
+}
 
 class AdminOrderViewModel : ViewModel() {
 
@@ -23,7 +53,17 @@ class AdminOrderViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AdminOrderUiState())
     val uiState: StateFlow<AdminOrderUiState> = _uiState
 
+    fun selectStatus(status: String) {
+        if (_uiState.value.selectedStatus == status) return
+        _uiState.value = _uiState.value.copy(selectedStatus = status)
+        loadOrders(status)
+    }
+
     fun loadPendingOrders() {
+        loadOrders(_uiState.value.selectedStatus)
+    }
+
+    private fun loadOrders(status: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
@@ -31,36 +71,63 @@ class AdminOrderViewModel : ViewModel() {
                 successMessage = ""
             )
 
-            val result = repository.getPendingOrders()
+            val result = repository.getPendingOrders(status)
             result.onSuccess { items ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    pendingItems = items
+                    items = items
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Khong lay duoc don"
+                    errorMessage = error.message ?: "Không lấy được đơn"
                 )
             }
         }
     }
 
     fun approveOrderItem(orderItemId: Int) {
-        runAction(orderItemId, "Da duyet mon") {
+        runAction(orderItemId, "Đã duyệt món") {
             repository.approveOrderItem(orderItemId)
         }
     }
 
     fun rejectOrderItem(orderItemId: Int) {
-        runAction(orderItemId, "Da tu choi mon") {
+        runAction(orderItemId, "Đã từ chối món") {
             repository.rejectOrderItem(orderItemId)
         }
     }
 
     fun markItemServed(orderItemId: Int) {
-        runAction(orderItemId, "Da danh dau phuc vu") {
+        runAction(orderItemId, "Đã đánh dấu phục vụ") {
             repository.markItemServed(orderItemId)
+        }
+    }
+
+    fun approveOrder(orderId: Int) {
+        runOrderAction(
+            orderId = orderId,
+            successMessage = "Đã duyệt lượt gọi"
+        ) { item ->
+            repository.approveOrderItem(item.order_item_id)
+        }
+    }
+
+    fun rejectOrder(orderId: Int) {
+        runOrderAction(
+            orderId = orderId,
+            successMessage = "Đã từ chối lượt gọi"
+        ) { item ->
+            repository.rejectOrderItem(item.order_item_id)
+        }
+    }
+
+    fun markOrderServed(orderId: Int) {
+        runOrderAction(
+            orderId = orderId,
+            successMessage = "Đã đánh dấu lượt gọi đã phục vụ"
+        ) { item ->
+            repository.markItemServed(item.order_item_id)
         }
     }
 
@@ -71,7 +138,7 @@ class AdminOrderViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                actionItemId = orderItemId,
+                actionOrderId = orderItemId,
                 errorMessage = "",
                 successMessage = ""
             )
@@ -79,14 +146,48 @@ class AdminOrderViewModel : ViewModel() {
             val result = action()
             result.onSuccess {
                 _uiState.value = _uiState.value.copy(
-                    actionItemId = null,
+                    actionOrderId = null,
                     successMessage = successMessage
                 )
-                loadPendingOrders()
+                loadOrders(_uiState.value.selectedStatus)
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    actionItemId = null,
-                    errorMessage = error.message ?: "Cap nhat that bai"
+                    actionOrderId = null,
+                    errorMessage = error.message ?: "Cập nhật thất bại"
+                )
+            }
+        }
+    }
+
+    private fun runOrderAction(
+        orderId: Int,
+        successMessage: String,
+        action: suspend (PendingOrderItemDto) -> Result<*>
+    ) {
+        val orderItems = _uiState.value.items.filter { it.order_id == orderId }
+        if (orderItems.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                actionOrderId = orderId,
+                errorMessage = "",
+                successMessage = ""
+            )
+
+            val failed = orderItems
+                .map { item -> action(item) }
+                .firstOrNull { it.isFailure }
+
+            if (failed == null) {
+                _uiState.value = _uiState.value.copy(
+                    actionOrderId = null,
+                    successMessage = successMessage
+                )
+                loadOrders(_uiState.value.selectedStatus)
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    actionOrderId = null,
+                    errorMessage = failed.exceptionOrNull()?.message ?: "Cập nhật lượt gọi thất bại"
                 )
             }
         }

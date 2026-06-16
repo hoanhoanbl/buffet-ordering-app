@@ -51,7 +51,7 @@ fun ManageCategoryScreen(
     ) {
         item {
             CategoryForm(
-                title = if (uiState.editingCategoryId == null) "Them danh muc" else "Sua danh muc",
+                title = if (uiState.editingCategoryId == null) "Thêm danh mục" else "Sửa danh mục",
                 name = uiState.name,
                 status = uiState.status,
                 isLoading = uiState.isLoading,
@@ -129,7 +129,7 @@ private fun CategoryForm(
                 value = name,
                 onValueChange = onNameChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Ten danh muc") },
+                label = { Text("Tên danh mục") },
                 singleLine = true,
                 enabled = !isLoading
             )
@@ -144,14 +144,14 @@ private fun CategoryForm(
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Luu")
+                    Text("Lưu")
                 }
                 OutlinedButton(
                     onClick = onNew,
                     enabled = !isLoading,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Moi")
+                    Text("Mới")
                 }
             }
         }
@@ -188,13 +188,13 @@ private fun CategoryCard(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                    Text("Sua")
+                    Text("Sửa")
                 }
                 OutlinedButton(onClick = onToggleStatus, modifier = Modifier.weight(1f)) {
-                    Text(if (category.status == "active") "Tat" else "Bat")
+                    Text(if (category.status == "active") "Tắt" else "Bật")
                 }
                 OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                    Text("Xoa")
+                    Text("Xóa")
                 }
             }
         }
@@ -212,7 +212,7 @@ fun StatusSelector(
             FilterChip(
                 selected = selected == option,
                 onClick = { onSelected(option) },
-                label = { Text(option) }
+                label = { Text(statusLabel(option)) }
             )
         }
     }

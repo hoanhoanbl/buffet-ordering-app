@@ -111,14 +111,14 @@ class AdminTableViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     selectedTableSession = null,
-                    successMessage = "Da dong ban"
+                    successMessage = "Đã đóng bàn"
                 )
 
                 loadTables()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Dong ban that bai"
+                    errorMessage = error.message ?: "Đóng bàn thất bại"
                 )
             }
         }

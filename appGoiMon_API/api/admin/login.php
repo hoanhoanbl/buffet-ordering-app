@@ -12,14 +12,11 @@ run_endpoint(function (): void {
         json_response(false, 'Thiếu tên đăng nhập hoặc mật khẩu', null, 422);
     }
 
-    $stmt = db()->prepare("SELECT id, username, password, role FROM users WHERE username = ? AND role = 'admin' LIMIT 1");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
+    $user = find_user_by_username(db(), $username);
 
-    if (!$user || ((string) $user['password'] !== $password && !password_verify($password, (string) $user['password']))) {
+    if (!$user || $user['role'] !== 'admin' || !password_matches($password, (string) $user['password'])) {
         json_response(false, 'Sai thông tin đăng nhập', null, 401);
     }
 
-    unset($user['password']);
-    json_response(true, 'Đăng nhập thành công', $user);
+    json_response(true, 'Đăng nhập thành công', public_user($user));
 });

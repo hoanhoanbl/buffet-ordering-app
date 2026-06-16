@@ -16,8 +16,7 @@ import com.example.appgoimon.ui.screen.admin.AdminDashboardScreen
 import com.example.appgoimon.ui.screen.admin.AdminLoginScreen
 import com.example.appgoimon.ui.screen.user.ComboAndGuestScreen
 import com.example.appgoimon.ui.screen.user.SelectTableScreen
-import com.example.appgoimon.ui.screen.user.TableOrderScreen
-import com.example.appgoimon.ui.screen.user.WaitingPaymentScreen
+import com.example.appgoimon.ui.screen.user.UserMainScaffold
 import com.example.appgoimon.viewmodel.OrderViewModel
 import com.example.appgoimon.viewmodel.UserOrderStep
 import java.util.Locale
@@ -86,23 +85,21 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
 
-                                UserOrderStep.WAITING_PAYMENT -> {
-                                    WaitingPaymentScreen(
-                                        user = currentUser!!,
-                                        uiState = orderUiState,
-                                        onRefresh = orderViewModel::refreshSessionStatus,
-                                        onBack = orderViewModel::backToTableEntry,
-                                        onLogout = ::logout
-                                    )
-                                }
-
                                 UserOrderStep.ACTIVE_MENU -> {
-                                    TableOrderScreen(
+                                    UserMainScaffold(
                                         user = currentUser!!,
                                         uiState = orderUiState,
                                         onBack = orderViewModel::backToTableEntry,
                                         onLogout = ::logout,
-                                        onRetryMenu = { orderViewModel.loadMenu() }
+                                        onRetryMenu = { orderViewModel.loadMenu() },
+                                        onAddToCart = orderViewModel::addToCart,
+                                        onUpdateQuantity = orderViewModel::updateCartItemQuantity,
+                                        onUpdateNote = orderViewModel::updateCartItemNote,
+                                        onSubmitOrder = orderViewModel::submitOrder,
+                                        onSearchQueryChange = orderViewModel::onSearchQueryChange,
+                                        onCategorySelected = orderViewModel::onCategorySelected,
+                                        onLoadOrderHistory = orderViewModel::loadOrderHistory,
+                                        onRefreshOrderHistory = orderViewModel::refreshOrderHistory
                                     )
                                 }
                             }

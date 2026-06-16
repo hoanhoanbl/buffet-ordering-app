@@ -56,7 +56,7 @@ class AdminFoodViewModel : ViewModel() {
                     isLoading = false,
                     errorMessage = foodResult.exceptionOrNull()?.message
                         ?: categoryResult.exceptionOrNull()?.message
-                        ?: "Khong lay duoc du lieu menu"
+                        ?: "Không lấy được dữ liệu menu"
                 )
             }
         }
@@ -117,12 +117,12 @@ class AdminFoodViewModel : ViewModel() {
         val editingId = _uiState.value.editingFoodId
 
         if (categoryId == null) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Vui long chon danh muc")
+            _uiState.value = _uiState.value.copy(errorMessage = "Vui lòng chọn danh mục")
             return
         }
 
         if (name.isEmpty()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Vui long nhap ten mon")
+            _uiState.value = _uiState.value.copy(errorMessage = "Vui lòng nhập tên món")
             return
         }
 
@@ -142,26 +142,26 @@ class AdminFoodViewModel : ViewModel() {
                     image = "",
                     description = "",
                     status = "available",
-                    successMessage = "Da luu mon"
+                    successMessage = "Đã lưu món"
                 )
                 loadMenuData()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Luu mon that bai"
+                    errorMessage = error.message ?: "Lưu món thất bại"
                 )
             }
         }
     }
 
     fun deleteMenuItem(foodId: Int) {
-        updateMenuItem("Da an mon") {
+        updateMenuItem("Đã ẩn món") {
             foodRepository.deleteMenuItem(foodId)
         }
     }
 
     fun setMenuItemStatus(foodId: Int, status: String) {
-        updateMenuItem("Da cap nhat trang thai mon") {
+        updateMenuItem("Đã cập nhật trạng thái món") {
             foodRepository.setMenuItemStatus(foodId, status)
         }
     }
@@ -182,7 +182,7 @@ class AdminFoodViewModel : ViewModel() {
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Cap nhat mon that bai"
+                    errorMessage = error.message ?: "Cập nhật món thất bại"
                 )
             }
         }

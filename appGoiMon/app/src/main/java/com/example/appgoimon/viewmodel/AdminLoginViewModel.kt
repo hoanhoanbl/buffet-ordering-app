@@ -71,7 +71,7 @@ class AdminLoginViewModel : ViewModel() {
 
         if (username.isEmpty() || password.isEmpty()) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Vui long nhap tai khoan va mat khau"
+                errorMessage = "Vui lòng nhập tài khoản và mật khẩu"
             )
             return
         }
@@ -90,7 +90,7 @@ class AdminLoginViewModel : ViewModel() {
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Dang nhap that bai"
+                    errorMessage = error.message ?: "Đăng nhập thất bại"
                 )
             }
         }
@@ -105,21 +105,21 @@ class AdminLoginViewModel : ViewModel() {
 
         if (fullName.isEmpty() || phone.isEmpty() || username.isEmpty() || password.isEmpty()) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Vui long nhap day du thong tin dang ky"
+                errorMessage = "Vui lòng nhập đầy đủ thông tin đăng ký"
             )
             return
         }
 
         if (password.length < 6) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Mat khau phai co it nhat 6 ky tu"
+                errorMessage = "Mật khẩu phải có ít nhất 6 ký tự"
             )
             return
         }
 
         if (password != confirmPassword) {
             _uiState.value = _uiState.value.copy(
-                errorMessage = "Mat khau xac nhan khong khop"
+                errorMessage = "Mật khẩu xác nhận không khớp"
             )
             return
         }
@@ -138,7 +138,7 @@ class AdminLoginViewModel : ViewModel() {
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Dang ky that bai"
+                    errorMessage = error.message ?: "Đăng ký thất bại"
                 )
             }
         }

@@ -1,6 +1,8 @@
 package com.example.appgoimon.data.repository
 
 import com.example.appgoimon.data.remote.ApiResponse
+import com.example.appgoimon.data.remote.CreateOrderRequest
+import com.example.appgoimon.data.remote.CreateOrderResponseDto
 import com.example.appgoimon.data.remote.MutationResultDto
 import com.example.appgoimon.data.remote.OrderItemActionRequest
 import com.example.appgoimon.data.remote.PendingOrderItemDto
@@ -9,18 +11,33 @@ import retrofit2.Response
 
 class OrderRepository {
 
-    suspend fun getPendingOrders(): Result<List<PendingOrderItemDto>> {
+    suspend fun createOrder(request: CreateOrderRequest): Result<CreateOrderResponseDto> {
         return try {
-            val response = RetrofitClient.apiService.getPendingOrders()
+            val response = RetrofitClient.apiService.createOrder(request)
             val body = response.body()
 
             if (response.isSuccessful && body != null && body.success && body.data != null) {
                 Result.success(body.data)
             } else {
-                Result.failure(Exception(body?.message ?: "Khong lay duoc danh sach mon cho duyet"))
+                Result.failure(Exception(body?.message ?: "Không thể gọi món"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
+        }
+    }
+
+    suspend fun getPendingOrders(status: String = "pending"): Result<List<PendingOrderItemDto>> {
+        return try {
+            val response = RetrofitClient.apiService.getPendingOrders(status)
+            val body = response.body()
+
+            if (response.isSuccessful && body != null && body.success && body.data != null) {
+                Result.success(body.data)
+            } else {
+                Result.failure(Exception(body?.message ?: "Khong lay duoc danh sach mon"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 
@@ -56,7 +73,7 @@ class OrderRepository {
                 Result.failure(Exception(body?.message ?: "Cap nhat trang thai mon that bai"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 }

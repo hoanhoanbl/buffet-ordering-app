@@ -16,7 +16,7 @@ class DashboardRepository {
                 Result.failure(Exception(body?.message ?: "Khong lay duoc thong ke"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Khong the ket noi server: ${e.message}"))
+            Result.failure(Exception(e.message ?: "Khong the ket noi server"))
         }
     }
 }

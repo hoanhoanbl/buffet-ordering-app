@@ -5,5 +5,5 @@ require_once __DIR__ . '/_order_status_helper.php';
 
 run_endpoint(function (): void {
     require_method('POST');
-    update_order_item_status('processing', 'Đã chuyển món sang đang xử lý');
+    update_order_item_status('approved', 'Da duyet mon');
 });

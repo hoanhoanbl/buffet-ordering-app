@@ -1,24 +1,38 @@
 package com.example.appgoimon.ui.screen.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,13 +41,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.SubcomposeAsyncImage
 import com.example.appgoimon.data.remote.CategoryDto
 import com.example.appgoimon.data.remote.MenuItemDto
+import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.ui.theme.AmberPrimaryDark
 import com.example.appgoimon.ui.theme.InkBrown
 import com.example.appgoimon.ui.theme.MutedBrown
@@ -45,22 +65,37 @@ fun ManageFoodScreen() {
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
-                selected = selectedTab == 0,
-                onClick = { selectedTab = 0 },
-                label = { Text("Mon") }
-            )
-            FilterChip(
-                selected = selectedTab == 1,
-                onClick = { selectedTab = 1 },
-                label = { Text("Danh muc") }
-            )
+            item {
+                FilterChip(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    label = { Text("Menu") },
+                    leadingIcon = if (selectedTab == 0) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else {
+                        null
+                    },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFE1D2))
+                )
+            }
+            item {
+                FilterChip(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    label = { Text("Danh mục") },
+                    leadingIcon = if (selectedTab == 1) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else {
+                        null
+                    },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFE1D2))
+                )
+            }
         }
 
         if (selectedTab == 0) {
@@ -84,11 +119,15 @@ private fun MenuItemsScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
+            MenuSummaryCard(total = uiState.menuItems.size)
+        }
+
+        item {
             MenuItemForm(
-                title = if (uiState.editingFoodId == null) "Them mon" else "Sua mon",
+                title = if (uiState.editingFoodId == null) "Thêm món" else "Sửa món",
                 categories = uiState.categories,
                 selectedCategoryId = uiState.categoryId,
                 name = uiState.name,
@@ -108,7 +147,14 @@ private fun MenuItemsScreen(
 
         if (uiState.isLoading) {
             item {
-                CircularProgressIndicator(color = AmberPrimaryDark)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AmberPrimaryDark)
+                }
             }
         }
 
@@ -123,7 +169,18 @@ private fun MenuItemsScreen(
 
         if (uiState.successMessage.isNotEmpty()) {
             item {
-                Text(uiState.successMessage, color = AmberPrimaryDark)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFE7F6EC)
+                ) {
+                    Text(
+                        text = uiState.successMessage,
+                        modifier = Modifier.padding(12.dp),
+                        color = Color(0xFF166534),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
 
@@ -134,6 +191,44 @@ private fun MenuItemsScreen(
                 onStatus = { status -> viewModel.setMenuItemStatus(item.id, status) },
                 onDelete = { viewModel.deleteMenuItem(item.id) }
             )
+        }
+    }
+}
+
+@Composable
+private fun MenuSummaryCard(total: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(Color(0xFFFFE1D2), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Menu, contentDescription = null, tint = OrangeAccent)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "$total món trong menu",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = InkBrown,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Quản lý món, ảnh, danh mục và trạng thái bán",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedBrown
+                )
+            }
         }
     }
 }
@@ -158,26 +253,41 @@ private fun MenuItemForm(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = InkBrown,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = InkBrown,
+                    fontWeight = FontWeight.Bold
+                )
+                StatusBadge(status)
+            }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(categories.filter { it.status == "active" }) { category ->
                     FilterChip(
                         selected = selectedCategoryId == category.id,
                         onClick = { onCategoryChange(category.id) },
-                        label = { Text(category.category_name) }
+                        label = {
+                            Text(
+                                text = category.category_name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFE1D2))
                     )
                 }
             }
@@ -186,7 +296,7 @@ private fun MenuItemForm(
                 value = name,
                 onValueChange = onNameChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Ten mon") },
+                label = { Text("Tên món") },
                 singleLine = true,
                 enabled = !isLoading
             )
@@ -194,7 +304,7 @@ private fun MenuItemForm(
                 value = image,
                 onValueChange = onImageChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Anh") },
+                label = { Text("Ảnh món") },
                 singleLine = true,
                 enabled = !isLoading
             )
@@ -202,7 +312,7 @@ private fun MenuItemForm(
                 value = description,
                 onValueChange = onDescriptionChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Mo ta") },
+                label = { Text("Mô tả") },
                 enabled = !isLoading,
                 minLines = 2
             )
@@ -217,16 +327,19 @@ private fun MenuItemForm(
                 Button(
                     onClick = onSave,
                     enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberPrimaryDark)
                 ) {
-                    Text("Luu")
+                    Text("Lưu")
                 }
                 OutlinedButton(
                     onClick = onNew,
                     enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Moi")
+                    Text("Mới")
                 }
             }
         }
@@ -242,42 +355,85 @@ private fun MenuItemCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = InkBrown,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(item.category_name ?: "Khong co danh muc", color = MutedBrown)
-                }
-                StatusBadge(item.status)
-            }
+                SubcomposeAsyncImage(
+                    model = resolveFoodImageUrl(item.image),
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                    loading = { ImageFallbackBox() },
+                    error = { ImageFallbackBox() }
+                )
 
-            if (!item.description.isNullOrBlank()) {
-                Text(item.description, color = MutedBrown)
-            }
-            if (!item.image.isNullOrBlank()) {
-                Text("Anh: ${item.image}", color = OrangeAccent)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = item.name,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = InkBrown,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        StatusBadge(item.status)
+                    }
+                    Text(
+                        text = item.category_name ?: "Không có danh mục",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OrangeAccent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!item.description.isNullOrBlank()) {
+                        Text(
+                            text = item.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MutedBrown,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onEdit, modifier = Modifier.weight(1f)) {
-                    Text("Sua")
+                Button(
+                    onClick = onEdit,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangeAccent)
+                ) {
+                    Text("Sửa")
                 }
-                OutlinedButton(onClick = onDelete, modifier = Modifier.weight(1f)) {
-                    Text("Xoa")
+                OutlinedButton(
+                    onClick = onDelete,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Xóa")
                 }
             }
 
@@ -288,4 +444,30 @@ private fun MenuItemCard(
             )
         }
     }
+}
+
+@Composable
+private fun ImageFallbackBox() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFFF3D8)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Ảnh", style = MaterialTheme.typography.labelSmall, color = MutedBrown)
+    }
+}
+
+private fun resolveFoodImageUrl(image: String?): String? {
+    val value = image?.trim().orEmpty()
+    if (value.isEmpty()) {
+        return null
+    }
+    if (value.startsWith("http://") || value.startsWith("https://")) {
+        return value
+    }
+    if (!value.contains('/')) {
+        return RetrofitClient.BASE_URL + "uploads/foods/$value"
+    }
+    return RetrofitClient.BASE_URL + value.trimStart('/')
 }

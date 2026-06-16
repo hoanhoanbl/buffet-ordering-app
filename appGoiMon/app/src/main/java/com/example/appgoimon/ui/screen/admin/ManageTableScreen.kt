@@ -52,13 +52,13 @@ fun ManageTableScreen(
     ) {
         item {
             TextButton(onClick = onBackClick) {
-                Text("Quay lai")
+                Text("Quay lại")
             }
         }
 
         item {
             Text(
-                text = "Chi tiet ban",
+                text = "Chi tiết bàn",
                 style = MaterialTheme.typography.titleLarge,
                 color = InkBrown,
                 fontWeight = FontWeight.Bold
@@ -93,7 +93,7 @@ fun ManageTableScreen(
         val detail = uiState.selectedTableSession
         if (detail == null && !uiState.isLoading) {
             item {
-                Text("Ban nay chua co phien dang mo", color = MutedBrown)
+                Text("Bàn này chưa có phiên đang mở", color = MutedBrown)
             }
         }
 
@@ -122,42 +122,40 @@ fun ManageTableScreen(
                             StatusBadge(session.status)
                         }
 
-                        DetailLine("Ma phien", session.id.toString())
-                        DetailLine("Combo", session.combo_name ?: "Khong co")
-                        DetailLine("Khach tinh tien", session.paid_guest_count.toString())
-                        DetailLine("Tre em mien phi", session.free_child_count.toString())
-                        DetailLine("Thanh toan", session.payment_method)
-                        DetailLine("Trang thai thanh toan", session.payment_status)
-                        DetailLine("Tong tien", formatCurrency(session.total_amount))
-                        DetailLine("Bat dau", session.start_time ?: "Chua co")
+                        DetailLine("Mã phiên", session.id.toString())
+                        DetailLine("Combo", session.combo_name ?: "Không có")
+                        DetailLine("Khách tính tiền", session.paid_guest_count.toString())
+                        DetailLine("Trẻ em miễn phí", session.free_child_count.toString())
+                        DetailLine("Thanh toán", statusLabel(session.payment_method ?: "-"))
+                        DetailLine("Trạng thái thanh toán", statusLabel(session.payment_status ?: "-"))
+                        DetailLine("Tổng tiền", formatCurrency(session.total_amount))
+                        DetailLine("Bắt đầu", session.start_time ?: "Chưa có")
+                        DetailLine("Kết thúc", session.end_time ?: "Chưa có")
+                        DetailLine(
+                            "Thời gian còn lại",
+                            if (session.is_expired == true) "Hết giờ" else "${session.remaining_minutes ?: 0} phút"
+                        )
                     }
                 }
             }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (session.payment_status != "paid" || session.status != "active") {
-                        Button(
-                            onClick = {
-                                viewModel.confirmPayment(
-                                    sessionId = session.id,
-                                    tableId = tableId
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Xac nhan thanh toan")
-                        }
+                    if (detail.has_unfinished_items == true) {
+                        Text(
+                            "Bàn còn ${detail.unfinished_item_count ?: 0} món chưa phục vụ hoặc chưa từ chối",
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
 
-                    if (session.status == "active") {
+                    if (session.status == "active" || session.status == "expired") {
                         OutlinedButton(
                             onClick = {
                                 viewModel.closeTable(session.id)
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Dong ban")
+                            Text("Đóng bàn")
                         }
                     }
                 }
@@ -165,7 +163,7 @@ fun ManageTableScreen(
 
             item {
                 Text(
-                    text = "Mon da goi",
+                    text = "Món đã gọi",
                     style = MaterialTheme.typography.titleMedium,
                     color = InkBrown,
                     fontWeight = FontWeight.Bold
@@ -174,7 +172,7 @@ fun ManageTableScreen(
 
             if (detail.order_items.isEmpty()) {
                 item {
-                    Text("Chua co mon nao duoc goi", color = MutedBrown)
+                    Text("Chưa có món nào được gọi", color = MutedBrown)
                 }
             } else {
                 items(detail.order_items) { item ->
@@ -193,9 +191,9 @@ fun ManageTableScreen(
                                 color = InkBrown,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text("So luong: ${item.quantity}", color = MutedBrown)
-                            Text("Ghi chu: ${item.note.orEmpty()}", color = MutedBrown)
-                            Text("Trang thai: ${item.item_status}", color = OrangeAccent)
+                            Text("Số lượng: ${item.quantity}", color = MutedBrown)
+                            Text("Ghi chú: ${item.note.orEmpty()}", color = MutedBrown)
+                            Text("Trạng thái: ${statusLabel(item.item_status)}", color = OrangeAccent)
                         }
                     }
                 }

@@ -38,7 +38,7 @@ class AdminCategoryViewModel : ViewModel() {
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Khong lay duoc danh muc"
+                    errorMessage = error.message ?: "Không lấy được danh mục"
                 )
             }
         }
@@ -78,7 +78,7 @@ class AdminCategoryViewModel : ViewModel() {
         val editingId = _uiState.value.editingCategoryId
 
         if (name.isEmpty()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Vui long nhap ten danh muc")
+            _uiState.value = _uiState.value.copy(errorMessage = "Vui lòng nhập tên danh mục")
             return
         }
 
@@ -96,26 +96,26 @@ class AdminCategoryViewModel : ViewModel() {
                     editingCategoryId = null,
                     name = "",
                     status = "active",
-                    successMessage = "Da luu danh muc"
+                    successMessage = "Đã lưu danh mục"
                 )
                 loadCategories()
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Luu danh muc that bai"
+                    errorMessage = error.message ?: "Lưu danh mục thất bại"
                 )
             }
         }
     }
 
     fun deleteCategory(categoryId: Int) {
-        updateCategory(categoryId, "Da xoa danh muc") {
+        updateCategory(categoryId, "Đã xóa danh mục") {
             repository.deleteCategory(categoryId)
         }
     }
 
     fun setCategoryStatus(categoryId: Int, status: String) {
-        updateCategory(categoryId, "Da cap nhat trang thai") {
+        updateCategory(categoryId, "Đã cập nhật trạng thái") {
             repository.setCategoryStatus(categoryId, status)
         }
     }
@@ -137,7 +137,7 @@ class AdminCategoryViewModel : ViewModel() {
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Cap nhat danh muc that bai"
+                    errorMessage = error.message ?: "Cập nhật danh mục thất bại"
                 )
             }
         }

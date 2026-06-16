@@ -48,12 +48,19 @@ data class TableDto(
     val payment_status: String?,
     val session_status: String?,
     val total_amount: String?,
-    val start_time: String?
+    val start_time: String?,
+    val end_time: String? = null,
+    val paid_at: String? = null,
+    val is_expired: Boolean? = null,
+    val remaining_seconds: Int? = null,
+    val remaining_minutes: Int? = null
 )
 
 data class TableSessionResponseDto(
     val session: TableSessionDto,
-    val order_items: List<OrderItemDto>
+    val order_items: List<OrderItemDto>,
+    val unfinished_item_count: Int? = null,
+    val has_unfinished_items: Boolean? = null
 )
 
 data class TableSessionDto(
@@ -62,12 +69,16 @@ data class TableSessionDto(
     val combo_id: Int,
     val paid_guest_count: Int,
     val free_child_count: Int,
-    val payment_method: String,
-    val payment_status: String,
+    val payment_method: String?,
+    val payment_status: String?,
     val status: String,
     val total_amount: String,
     val start_time: String?,
     val end_time: String?,
+    val paid_at: String? = null,
+    val is_expired: Boolean? = null,
+    val remaining_seconds: Int? = null,
+    val remaining_minutes: Int? = null,
     val table_code: String,
     val table_name: String,
     val combo_name: String?,
@@ -121,7 +132,8 @@ data class DashboardTableStatsDto(
 
 data class DashboardOrderItemStatsDto(
     val pending: Int,
-    val processing: Int,
+    val processing: Int = 0,
+    val approved: Int = 0,
     val served: Int,
     val rejected: Int
 )
@@ -181,6 +193,7 @@ data class PendingOrderItemDto(
     val table_name: String,
     val food_id: Int,
     val food_name: String,
+    val image: String? = null,
     val quantity: Int,
     val note: String?,
     val status: String,
@@ -216,6 +229,8 @@ data class UserComboDto(
     val name: String,
     val price_per_person: String,
     val description: String?,
+    val image: String? = null,
+    val images: List<String> = emptyList(),
     val status: String
 )
 
@@ -231,6 +246,10 @@ data class UserSessionDto(
     val total_amount: String,
     val start_time: String?,
     val end_time: String? = null,
+    val paid_at: String? = null,
+    val is_expired: Boolean? = null,
+    val remaining_seconds: Int? = null,
+    val remaining_minutes: Int? = null,
     val table_code: String? = null,
     val table_name: String? = null,
     val combo_name: String? = null
@@ -254,7 +273,46 @@ data class CreateSessionResponseDto(
     val table_id: Int,
     val combo: UserComboDto?,
     val total_amount: String,
+    val status: String,
+    val session: UserSessionDto? = null
+)
+
+data class CreateOrderItemRequest(
+    val food_id: Int,
+    val quantity: Int,
+    val note: String = ""
+)
+
+data class CreateOrderRequest(
+    val session_id: Int,
+    val items: List<CreateOrderItemRequest>,
+    val note: String = ""
+)
+
+data class CreatedOrderItemDto(
+    val order_item_id: Int,
+    val food_id: Int,
+    val quantity: Int,
     val status: String
+)
+
+data class CreateOrderResponseDto(
+    val order_id: Int,
+    val items: List<CreatedOrderItemDto>
+)
+
+data class OrderHistoryItemDto(
+    val food_name: String,
+    val image: String? = null,
+    val quantity: Int,
+    val note: String?,
+    val status: String
+)
+
+data class OrderHistoryDto(
+    val order_id: Int,
+    val created_at: String,
+    val items: List<OrderHistoryItemDto>
 )
 
 interface ApiService {
@@ -307,7 +365,9 @@ interface ApiService {
     ): Response<ApiResponse<MutationResultDto>>
 
     @GET("api/admin/get_pending_orders.php")
-    suspend fun getPendingOrders(): Response<ApiResponse<List<PendingOrderItemDto>>>
+    suspend fun getPendingOrders(
+        @Query("status") status: String = "pending"
+    ): Response<ApiResponse<List<PendingOrderItemDto>>>
 
     @POST("api/admin/approve_order_item.php")
     suspend fun approveOrderItem(
@@ -346,4 +406,14 @@ interface ApiService {
     suspend fun getMenuByCombo(
         @Query("combo_id") comboId: Int
     ): Response<ApiResponse<List<MenuItemDto>>>
+
+    @POST("api/user/create_order.php")
+    suspend fun createOrder(
+        @Body request: CreateOrderRequest
+    ): Response<ApiResponse<CreateOrderResponseDto>>
+
+    @GET("api/user/get_order_history.php")
+    suspend fun getOrderHistory(
+        @Query("session_id") sessionId: Int
+    ): Response<ApiResponse<List<OrderHistoryDto>>>
 }
