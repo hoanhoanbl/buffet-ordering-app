@@ -208,11 +208,6 @@ private fun ComboHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = "Chọn combo buffet và thanh toán",
-                color = MutedBrown,
-                style = MaterialTheme.typography.bodyMedium
-            )
             TextButton(onClick = onBack, contentPadding = PaddingValues(0.dp)) {
                 Text("Chọn bàn khác", color = AmberPrimaryDark, fontWeight = FontWeight.SemiBold)
             }
@@ -537,15 +532,15 @@ private fun GuestPaymentPanel(
             }
 
             GuestStepper(
-                title = "Khách trả phí",
-                subtitle = "Người lớn hoặc trẻ tính vé",
+                title = "Vé trả phí",
+                subtitle = "Chiều cao trên 1m sẽ trả phí",
                 value = paidGuests,
                 minValue = 1,
                 onChange = { onPaidGuestChange(it.toString()) }
             )
             GuestStepper(
-                title = "Trẻ em miễn phí",
-                subtitle = "Không tính vào hóa đơn",
+                title = "Vé trẻ em",
+                subtitle = "Em bé duới 1m sẽ miễn phí",
                 value = freeChildren,
                 minValue = 0,
                 onChange = { onFreeChildChange(it.toString()) }
