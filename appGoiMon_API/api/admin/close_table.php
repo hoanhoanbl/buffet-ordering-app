@@ -26,6 +26,19 @@ run_endpoint(function (): void {
     $unfinishedStmt->execute([$sessionId]);
     $unfinishedCount = (int) (($unfinishedStmt->fetch() ?: [])['total'] ?? 0);
 
+    // Business rule: a table can only be closed once every ordered item has been served or rejected.
+    if ($unfinishedCount > 0) {
+        json_response(
+            false,
+            "Còn {$unfinishedCount} món chưa phục vụ hoặc chưa từ chối. Vui lòng hoàn tất tất cả món trước khi đóng bàn.",
+            [
+                'unfinished_item_count' => $unfinishedCount,
+                'had_unfinished_items' => true,
+            ],
+            409
+        );
+    }
+
     $pdo->beginTransaction();
     $pdo->prepare("UPDATE table_sessions SET status = 'closed' WHERE id = ?")->execute([$sessionId]);
     $pdo->prepare("UPDATE restaurant_tables SET status = 'available' WHERE id = ?")->execute([(int) $session['table_id']]);

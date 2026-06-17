@@ -20,6 +20,7 @@ data class AdminFoodUiState(
     val image: String = "",
     val description: String = "",
     val status: String = "available",
+    val isUploadingImage: Boolean = false,
     val errorMessage: String = "",
     val successMessage: String = ""
 )
@@ -72,6 +73,23 @@ class AdminFoodViewModel : ViewModel() {
 
     fun onImageChange(value: String) {
         _uiState.value = _uiState.value.copy(image = value, errorMessage = "")
+    }
+
+    /** Uploads picked image bytes, then stores the returned filename in [AdminFoodUiState.image]. */
+    fun uploadImage(bytes: ByteArray, mimeType: String, fileName: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploadingImage = true, errorMessage = "")
+            foodRepository.uploadImage(bytes, mimeType, fileName)
+                .onSuccess { filename ->
+                    _uiState.value = _uiState.value.copy(isUploadingImage = false, image = filename)
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isUploadingImage = false,
+                        errorMessage = error.message ?: "Tải ảnh thất bại"
+                    )
+                }
+        }
     }
 
     fun onDescriptionChange(value: String) {

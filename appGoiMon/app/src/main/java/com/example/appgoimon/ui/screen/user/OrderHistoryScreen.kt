@@ -17,15 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
@@ -60,33 +63,27 @@ fun OrderHistoryScreen(
         onLoadHistory()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Da goi", fontWeight = FontWeight.Bold, color = InkBrown)
-                        Text(
-                            "Cac luot goi mon trong phien ban",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedBrown
-                        )
-                    }
-                }
+    // No app bar here: the persistent UserMainScaffold top bar is the single header. We only add an
+    // in-content title so it no longer stacks into a doubled header band.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFFFF7E8), Color(0xFFFFE7BB))
+                )
             )
-        }
-    ) { paddingValues ->
+    ) {
+        SectionHeader(
+            title = "Đã gọi",
+            subtitle = "Các lượt gọi món trong phiên bàn"
+        )
         PullToRefreshBox(
             isRefreshing = uiState.isLoadingHistory,
             onRefresh = onRefresh,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFFFFF7E8), Color(0xFFFFE7BB))
-                    )
-                )
+                .fillMaxWidth()
+                .weight(1f)
         ) {
             when {
                 uiState.isLoadingHistory && uiState.orderHistory.isEmpty() -> {
@@ -103,7 +100,7 @@ fun OrderHistoryScreen(
                         ) {
                             Text(uiState.errorMessage, color = MaterialTheme.colorScheme.error)
                             Button(onClick = onRetry) {
-                                Text("Thu lai")
+                                Text("Thử lại")
                             }
                         }
                     }
@@ -111,22 +108,7 @@ fun OrderHistoryScreen(
 
                 uiState.orderHistory.isEmpty() -> {
                     CenterBox {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                "Chua co mon nao duoc goi",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = InkBrown
-                            )
-                            Text(
-                                "Mon sau khi bam goi se nam o day",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedBrown
-                            )
-                        }
+                        EmptyHistoryState()
                     }
                 }
 
@@ -142,6 +124,84 @@ fun OrderHistoryScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, subtitle: String) {
+    Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = InkBrown
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MutedBrown
+        )
+    }
+}
+
+@Composable
+private fun EmptyHistoryState() {
+    Column(
+        modifier = Modifier.padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Soft concentric badge — keeps the empty state on-brand and intentional, matching the cart.
+        Box(
+            modifier = Modifier
+                .size(116.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFFFF0D6)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(84.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFE2AA)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.List,
+                    contentDescription = null,
+                    tint = OrangeAccent,
+                    modifier = Modifier.size(44.dp)
+                )
+            }
+        }
+
+        Text(
+            "Chưa có món nào được gọi",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = InkBrown,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "Các món bạn gửi cho bếp sẽ hiện ở đây cùng trạng thái chế biến.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MutedBrown,
+            textAlign = TextAlign.Center
+        )
+
+        Surface(
+            shape = CircleShape,
+            color = Color.White,
+            shadowElevation = 1.dp
+        ) {
+            Text(
+                text = "Chọn món ở Giỏ rồi bấm Gọi món",
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = OrangeAccent
+            )
         }
     }
 }
@@ -177,7 +237,7 @@ private fun OrderGroupCard(order: OrderHistoryDto) {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Goi luc ${formatOrderTime(order.created_at)}",
+                        text = "Gọi lúc ${formatOrderTime(order.created_at)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = InkBrown
@@ -191,7 +251,7 @@ private fun OrderGroupCard(order: OrderHistoryDto) {
                     )
                 }
 
-                QuantityPill(text = "$itemCount mon")
+                QuantityPill(text = "$itemCount món")
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -228,7 +288,7 @@ private fun OrderedItemRow(item: OrderHistoryItemDto) {
             },
             error = {
                 ImageFallbackBox {
-                    Text("Anh", style = MaterialTheme.typography.labelSmall, color = MutedBrown)
+                    Text("Ảnh", style = MaterialTheme.typography.labelSmall, color = MutedBrown)
                 }
             }
         )
@@ -247,16 +307,47 @@ private fun OrderedItemRow(item: OrderHistoryItemDto) {
             )
             if (!item.note.isNullOrBlank()) {
                 Text(
-                    text = "Ghi chu: ${item.note}",
+                    text = "Ghi chú: ${item.note}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MutedBrown,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            OrderItemStatusChip(status = item.status)
         }
 
         QuantityPill(text = "x${item.quantity}")
+    }
+}
+
+/**
+ * Small per-item status chip mapping the order-item status enum returned by the backend
+ * (pending / approved / processing / served / rejected) to a Vietnamese label and color.
+ */
+@Composable
+private fun OrderItemStatusChip(status: String) {
+    val (label, background, foreground) = when (status) {
+        "pending" -> Triple("Chờ duyệt", Color(0xFFFFF3D6), Color(0xFFB7791F))
+        "approved" -> Triple("Đã duyệt", Color(0xFFE3F0FF), Color(0xFF1D4ED8))
+        "processing" -> Triple("Đang nấu", Color(0xFFFFE7CC), OrangeAccent)
+        "served" -> Triple("Đã phục vụ", Color(0xFFDCF5E3), Color(0xFF15803D))
+        "rejected" -> Triple("Từ chối", Color(0xFFFFE0DC), Color(0xFFC23B22))
+        else -> Triple(status, Color(0xFFF1F1F1), MutedBrown)
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(background)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = foreground
+        )
     }
 }
 

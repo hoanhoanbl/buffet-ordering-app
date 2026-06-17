@@ -13,7 +13,7 @@ function db(): PDO
     $host = getenv('DB_HOST') ?: '127.0.0.1';
     $database = 'buffet_ordering';
     $username = 'root';
-    $password = '';
+    $password = 'root';
 
     $dsn = "mysql:host={$host};dbname={$database};charset=utf8mb4";
     $pdo = new PDO($dsn, $username, $password, [

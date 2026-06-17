@@ -10,6 +10,9 @@ run_endpoint(function (): void {
     $paidGuests = int_param($params, 'paid_guest_count');
     $freeChildren = max(0, int_param($params, 'free_child_count'));
     $paymentMethod = str_param($params, 'payment_method', 'cash');
+    // Owner of the session (logged-in user). 0 / missing => legacy/anonymous (stored as NULL).
+    $userId = int_param($params, 'user_id');
+    $ownerId = $userId > 0 ? $userId : null;
 
     ensure_positive($comboId, 'Thieu combo_id');
     ensure_positive($paidGuests, 'So khach tinh tien phai lon hon 0');
@@ -44,13 +47,19 @@ run_endpoint(function (): void {
 
     $totalAmount = $paidGuests * (float) $combo['price_per_person'];
 
+    // Cash is legitimately collected by staff at the counter, so it opens as paid.
+    // QR opens UNPAID: the customer app is NOT trusted to set paid status. Only a verified
+    // gateway callback (webhook.php / confirm_session_payment) may flip it to 'paid'.
+    $isCash = $paymentMethod === 'cash';
+    $paymentStatus = $isCash ? 'paid' : 'unpaid';
+
     $pdo->beginTransaction();
     $insert = $pdo->prepare(
         "INSERT INTO table_sessions
-         (table_id, combo_id, paid_guest_count, free_child_count, payment_method, payment_status, paid_at, status, total_amount, start_time, end_time)
-         VALUES (?, ?, ?, ?, ?, 'paid', NOW(), 'active', ?, NOW(), DATE_ADD(NOW(), INTERVAL 100 MINUTE))"
+         (table_id, user_id, combo_id, paid_guest_count, free_child_count, payment_method, payment_status, paid_at, status, total_amount, start_time, end_time)
+         VALUES (?, ?, ?, ?, ?, ?, ?, " . ($isCash ? 'NOW()' : 'NULL') . ", 'active', ?, NOW(), DATE_ADD(NOW(), INTERVAL 100 MINUTE))"
     );
-    $insert->execute([(int) $table['id'], $comboId, $paidGuests, $freeChildren, $paymentMethod, $totalAmount]);
+    $insert->execute([(int) $table['id'], $ownerId, $comboId, $paidGuests, $freeChildren, $paymentMethod, $paymentStatus, $totalAmount]);
     $sessionId = (int) $pdo->lastInsertId();
 
     $pdo->prepare("UPDATE restaurant_tables SET status = 'occupied' WHERE id = ?")->execute([(int) $table['id']]);
@@ -66,12 +75,31 @@ run_endpoint(function (): void {
     $sessionStmt->execute([$sessionId]);
     $session = decorate_session($pdo, $sessionStmt->fetch() ?: []);
 
-    json_response(true, 'Da thanh toan va mo phien buffet', [
+    // For QR sessions, attach the OFFLINE-generated VietQR payload so the app can render a real,
+    // scannable bank-transfer QR. This does NOT change the payment-confirmation flow (still manual).
+    if (!$isCash) {
+        $qr = vietqr_payment_fields($sessionId, $totalAmount);
+        $session = array_merge($session, $qr);
+    }
+
+    $responseData = [
         'session_id' => $sessionId,
         'table_id' => (int) $table['id'],
         'combo' => $combo,
         'total_amount' => number_format($totalAmount, 2, '.', ''),
         'status' => 'active',
+        'payment_status' => $paymentStatus,
         'session' => $session,
-    ], 201);
+    ];
+
+    if (!$isCash) {
+        $responseData = array_merge($responseData, vietqr_payment_fields($sessionId, $totalAmount));
+    }
+
+    json_response(
+        true,
+        $isCash ? 'Da thanh toan va mo phien buffet' : 'Da tao phien, cho thanh toan QR',
+        $responseData,
+        201
+    );
 });

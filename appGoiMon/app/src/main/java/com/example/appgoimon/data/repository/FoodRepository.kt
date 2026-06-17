@@ -4,8 +4,32 @@ import com.example.appgoimon.data.remote.ManageMenuItemRequest
 import com.example.appgoimon.data.remote.MenuItemDto
 import com.example.appgoimon.data.remote.MutationResultDto
 import com.example.appgoimon.data.remote.RetrofitClient
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class FoodRepository {
+
+    /**
+     * Uploads raw image bytes as multipart/form-data and returns the stored filename
+     * (to be saved in the menu item's `image` field).
+     */
+    suspend fun uploadImage(bytes: ByteArray, mimeType: String, fileName: String): Result<String> {
+        return try {
+            val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("image", fileName, body)
+            val response = RetrofitClient.apiService.uploadFoodImage(part)
+            val payload = response.body()
+
+            if (response.isSuccessful && payload != null && payload.success && payload.data != null) {
+                Result.success(payload.data.filename)
+            } else {
+                Result.failure(Exception(payload?.message ?: "Tải ảnh thất bại"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Không thể kết nối server"))
+        }
+    }
 
     suspend fun getMenuItems(): Result<List<MenuItemDto>> {
         return try {

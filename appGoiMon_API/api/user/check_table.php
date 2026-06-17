@@ -6,6 +6,9 @@ run_endpoint(function (): void {
     require_method('POST');
     $pdo = db();
     $params = input();
+    // Current logged-in user. Used to enforce session ownership: a user may only resume their OWN
+    // active session. 0 / missing => anonymous (can never own an existing session).
+    $userId = int_param($params, 'user_id');
     $table = fetch_table($pdo, $params);
 
     if (!$table) {
@@ -26,6 +29,12 @@ run_endpoint(function (): void {
     $session = $stmt->fetch();
 
     if ($session) {
+        $sessionOwner = isset($session['user_id']) ? (int) $session['user_id'] : 0;
+        // Only the owner may resume. A session owned by someone else (or a legacy NULL-owner
+        // session vs. an identified user) blocks the table — do NOT leak it as resumable.
+        if ($sessionOwner <= 0 || $userId <= 0 || $sessionOwner !== $userId) {
+            json_response(false, 'Bàn đang được khách khác sử dụng', null, 409);
+        }
         $session = decorate_session($pdo, $session);
     }
 

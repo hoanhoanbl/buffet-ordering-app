@@ -22,11 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
@@ -99,67 +102,43 @@ fun MenuScreen(
                 }
             )
 
-            // Search bar
+            // Search bar (search icon is built in; live-filters as you type)
             TextField(
                 value = uiState.searchQuery,
                 onValueChange = onSearchQueryChange,
                 modifier = Modifier.weight(1f),
                 placeholder = { Text("Tìm món ăn...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Tìm kiếm", tint = OrangeAccent) },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Xóa tìm kiếm",
+                                tint = MutedBrown
+                            )
+                        }
+                    }
+                },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
+                    unfocusedContainerColor = Color.White,
+                    // Drop the filled-field underline for a clean rounded pill.
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 singleLine = true
             )
-
-            // Search button
-            IconButton(
-                onClick = { /* Focus search field or leave empty */ },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        uiState.session?.let { session ->
-            val remainingText = if (uiState.isSessionExpired) {
-                "Da het thoi gian dung bua"
-            } else {
-                "Con lai ${uiState.remainingMinutes} phut"
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = when {
-                        uiState.isSessionExpired -> Color(0xFFFFECE8)
-                        uiState.remainingMinutes in 1..10 -> Color(0xFFFFF3D6)
-                        else -> Color.White
-                    }
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = "${session.table_name ?: "Ban"} - ${session.combo_name ?: "Buffet"}",
-                        color = InkBrown,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = remainingText,
-                        color = if (uiState.isSessionExpired) MaterialTheme.colorScheme.error else OrangeAccent
-                    )
-                    if (!uiState.isSessionExpired && uiState.remainingMinutes in 1..10) {
-                        Text("Sap het gio goi mon", color = MaterialTheme.colorScheme.error)
-                    }
-                }
-            }
-
+        // The live remaining-time countdown now lives in the persistent top bar of UserMainScaffold.
+        // Here we only surface a clear "session ended" CTA when expired.
+        if (uiState.isSessionExpired) {
+            SessionExpiredCard()
             Spacer(modifier = Modifier.height(12.dp))
         }
 
@@ -173,7 +152,8 @@ fun MenuScreen(
                 FilterChip(
                     selected = uiState.selectedCategoryName == null,
                     onClick = { onCategorySelected(null) },
-                    label = { Text("Tất cả") }
+                    label = { Text("Tất cả") },
+                    colors = brandChipColors()
                 )
             }
 
@@ -182,7 +162,8 @@ fun MenuScreen(
                 FilterChip(
                     selected = uiState.selectedCategoryName == category,
                     onClick = { onCategorySelected(category) },
-                    label = { Text(category) }
+                    label = { Text(category) },
+                    colors = brandChipColors()
                 )
             }
         }
@@ -213,7 +194,7 @@ fun MenuScreen(
                 ) {
                     Text(uiState.errorMessage, color = MaterialTheme.colorScheme.error)
                     androidx.compose.material3.Button(onClick = onRetryMenu) {
-                        Text("Thu lai")
+                        Text("Thử lại")
                     }
                 }
             }
@@ -222,29 +203,19 @@ fun MenuScreen(
 
         // Empty category state
         if (uiState.filteredMenuItems.isEmpty() && uiState.selectedCategoryName != null && uiState.searchQuery.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Chưa có món trong danh mục này",
-                    color = MutedBrown
-                )
-            }
+            MenuEmptyState(
+                title = "Chưa có món trong danh mục này",
+                subtitle = "Hãy thử chọn danh mục khác ở thanh phía trên."
+            )
             return
         }
 
         // Empty search results
         if (uiState.filteredMenuItems.isEmpty() && uiState.searchQuery.isNotEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Không tìm thấy món ăn phù hợp",
-                    color = MutedBrown
-                )
-            }
+            MenuEmptyState(
+                title = "Không tìm thấy món ăn phù hợp",
+                subtitle = "Thử từ khóa khác hoặc xóa ô tìm kiếm để xem tất cả món."
+            )
             return
         }
 
@@ -278,12 +249,13 @@ private fun MenuItemCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Image
             if (imageUrl != null) {
@@ -293,7 +265,7 @@ private fun MenuItemCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(100.dp)
-                        .clip(RoundedCornerShape(6.dp)),
+                        .clip(RoundedCornerShape(10.dp)),
                     contentScale = ContentScale.Crop,
                     loading = {
                         Box(
@@ -314,31 +286,28 @@ private fun MenuItemCard(
                 ImageFallbackText("Chưa có ảnh món")
             }
 
-            // Name
+            // Name — one line keeps every card the same height so the grid reads as a clean system.
             Text(
                 text = item.name,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleSmall,
                 color = InkBrown,
                 fontWeight = FontWeight.Bold,
-                minLines = 2,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Category
-            Text(
-                text = item.category_name ?: "Không có danh mục",
-                style = MaterialTheme.typography.bodySmall,
-                color = OrangeAccent
-            )
-
-            // Action buttons
-            if (cartItem == null) {
-                // Show add button
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
+            // Bottom row: category tag on the left, add / quantity control pinned to the right.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CategoryTag(
+                    text = item.category_name ?: "Chưa phân loại",
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                if (cartItem == null) {
                     SmallFloatingActionButton(
                         onClick = onAddToCart,
                         containerColor = OrangeAccent,
@@ -346,33 +315,126 @@ private fun MenuItemCard(
                     ) {
                         Icon(Icons.Default.Add, "Thêm vào giỏ", tint = Color.White)
                     }
-                }
-            } else {
-                // Show quantity controls
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { onUpdateQuantity(cartItem.quantity - 1) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Text("-", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    }
-                    Text(
-                        text = cartItem.quantity.toString(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                } else {
+                    MenuQuantityStepper(
+                        quantity = cartItem.quantity,
+                        onDecrease = { onUpdateQuantity(cartItem.quantity - 1) },
+                        onIncrease = { onUpdateQuantity(cartItem.quantity + 1) }
                     )
-                    IconButton(
-                        onClick = { onUpdateQuantity(cartItem.quantity + 1) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Text("+", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTag(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFFF0D6))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = OrangeAccent,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun MenuQuantityStepper(
+    quantity: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color(0xFFFFF0D6))
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        IconButton(
+            onClick = onDecrease,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Text("-", fontWeight = FontWeight.Bold, color = InkBrown, style = MaterialTheme.typography.titleMedium)
+        }
+        Text(
+            text = quantity.toString(),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = InkBrown,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(22.dp)
+        )
+        IconButton(
+            onClick = onIncrease,
+            modifier = Modifier.size(32.dp)
+        ) {
+            Text("+", fontWeight = FontWeight.Bold, color = OrangeAccent, style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+@Composable
+private fun brandChipColors() = FilterChipDefaults.filterChipColors(
+    selectedContainerColor = Color(0xFFFFE1D2),
+    selectedLabelColor = OrangeAccent
+)
+
+@Composable
+private fun MenuEmptyState(title: String, subtitle: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(116.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFF0D6)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFFE2AA)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = OrangeAccent,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = InkBrown,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MutedBrown,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

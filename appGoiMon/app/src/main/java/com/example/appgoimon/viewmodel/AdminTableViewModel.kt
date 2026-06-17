@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 
 data class AdminTableUiState(
     val isLoading: Boolean = false,
+    val isFirstLoad: Boolean = true,
     val tables: List<TableDto> = emptyList(),
     val selectedTableSession: TableSessionResponseDto? = null,
     val errorMessage: String = "",
@@ -36,6 +37,7 @@ class AdminTableViewModel : ViewModel() {
             result.onSuccess { tables ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    isFirstLoad = false,
                     tables = tables
                 )
             }.onFailure { error ->

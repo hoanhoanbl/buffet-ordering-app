@@ -7,11 +7,16 @@ import com.example.appgoimon.data.repository.OrderRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 
 data class AdminOrderUiState(
     val isLoading: Boolean = false,
+    val isFirstLoad: Boolean = true,
     val actionOrderId: Int? = null,
     val selectedStatus: String = "pending",
+    // null = tất cả ngày; "yyyy-MM-dd" = lọc đúng một ngày. Mặc định mở ở "hôm nay".
+    val selectedDate: String? = null,
     val items: List<PendingOrderItemDto> = emptyList(),
     val errorMessage: String = "",
     val successMessage: String = ""
@@ -50,13 +55,24 @@ class AdminOrderViewModel : ViewModel() {
 
     private val repository = OrderRepository()
 
-    private val _uiState = MutableStateFlow(AdminOrderUiState())
+    private val _uiState = MutableStateFlow(
+        AdminOrderUiState(
+            selectedDate = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString()
+        )
+    )
     val uiState: StateFlow<AdminOrderUiState> = _uiState
 
     fun selectStatus(status: String) {
         if (_uiState.value.selectedStatus == status) return
         _uiState.value = _uiState.value.copy(selectedStatus = status)
         loadOrders(status)
+    }
+
+    /** Set the day filter ("yyyy-MM-dd") or null for all days, then reload. */
+    fun selectDate(date: String?) {
+        if (_uiState.value.selectedDate == date) return
+        _uiState.value = _uiState.value.copy(selectedDate = date)
+        loadOrders(_uiState.value.selectedStatus)
     }
 
     fun loadPendingOrders() {
@@ -71,10 +87,11 @@ class AdminOrderViewModel : ViewModel() {
                 successMessage = ""
             )
 
-            val result = repository.getPendingOrders(status)
+            val result = repository.getPendingOrders(status, _uiState.value.selectedDate)
             result.onSuccess { items ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
+                    isFirstLoad = false,
                     items = items
                 )
             }.onFailure { error ->

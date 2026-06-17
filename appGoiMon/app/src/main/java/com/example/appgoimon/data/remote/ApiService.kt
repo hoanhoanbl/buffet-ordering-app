@@ -1,10 +1,13 @@
 package com.example.appgoimon.data.remote
 
 import com.google.gson.annotations.SerializedName
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Query
 
 data class ApiResponse<T>(
@@ -184,6 +187,10 @@ data class ManageMenuItemRequest(
     val status: String? = null
 )
 
+data class UploadImageDto(
+    val filename: String
+)
+
 data class PendingOrderItemDto(
     val order_item_id: Int,
     val order_id: Int,
@@ -213,14 +220,18 @@ data class MutationResultDto(
 )
 
 data class TableCheckRequest(
-    val table_code: String
+    val table_code: String,
+    val user_id: Int
 )
 
 data class UserTableDto(
     val id: Int,
     val table_code: String,
     val table_name: String,
-    val status: String
+    val status: String,
+    // True when this table's active session belongs to the current user (resumable),
+    // false/null when it is free or owned by another guest.
+    val is_mine: Boolean = false
 )
 
 data class UserComboDto(
@@ -237,6 +248,8 @@ data class UserComboDto(
 data class UserSessionDto(
     val id: Int,
     val table_id: Int,
+    // Owner of the session (logged-in user). Null for legacy/anonymous sessions.
+    val user_id: Int? = null,
     val combo_id: Int,
     val paid_guest_count: Int,
     val free_child_count: Int,
@@ -252,7 +265,12 @@ data class UserSessionDto(
     val remaining_minutes: Int? = null,
     val table_code: String? = null,
     val table_name: String? = null,
-    val combo_name: String? = null
+    val combo_name: String? = null,
+    // OFFLINE-generated VietQR (Napas EMVCo) bank-transfer payload + display fields for QR sessions.
+    val vietqr_payload: String? = null,
+    val bank_account_no: String? = null,
+    val bank_account_name: String? = null,
+    val bank_name_or_bin: String? = null
 )
 
 data class TableCheckResponseDto(
@@ -265,7 +283,8 @@ data class CreateSessionRequest(
     val combo_id: Int,
     val paid_guest_count: Int,
     val free_child_count: Int,
-    val payment_method: String
+    val payment_method: String,
+    val user_id: Int
 )
 
 data class CreateSessionResponseDto(
@@ -274,7 +293,23 @@ data class CreateSessionResponseDto(
     val combo: UserComboDto?,
     val total_amount: String,
     val status: String,
-    val session: UserSessionDto? = null
+    val session: UserSessionDto? = null,
+    // OFFLINE-generated VietQR (Napas EMVCo) bank-transfer payload + display fields for QR sessions.
+    val vietqr_payload: String? = null,
+    val bank_account_no: String? = null,
+    val bank_account_name: String? = null,
+    val bank_name_or_bin: String? = null
+)
+
+data class SimulatePaymentRequest(
+    val session_id: Int
+)
+
+data class SimulatePaymentDataDto(
+    val result: String? = null,
+    val session_id: Int? = null,
+    val transaction_id: String? = null,
+    val amount: Double? = null
 )
 
 data class CreateOrderItemRequest(
@@ -364,9 +399,16 @@ interface ApiService {
         @Body request: ManageMenuItemRequest
     ): Response<ApiResponse<MutationResultDto>>
 
+    @Multipart
+    @POST("api/admin/upload_image.php")
+    suspend fun uploadFoodImage(
+        @Part image: MultipartBody.Part
+    ): Response<ApiResponse<UploadImageDto>>
+
     @GET("api/admin/get_pending_orders.php")
     suspend fun getPendingOrders(
-        @Query("status") status: String = "pending"
+        @Query("status") status: String = "pending",
+        @Query("date") date: String? = null
     ): Response<ApiResponse<List<PendingOrderItemDto>>>
 
     @POST("api/admin/approve_order_item.php")
@@ -383,6 +425,16 @@ interface ApiService {
     suspend fun markItemServed(
         @Body request: OrderItemActionRequest
     ): Response<ApiResponse<MutationResultDto>>
+
+    @GET("api/user/list_tables.php")
+    suspend fun listUserTables(
+        @Query("user_id") userId: Int
+    ): Response<ApiResponse<List<UserTableDto>>>
+
+    @GET("api/user/my_active_session.php")
+    suspend fun getMyActiveSession(
+        @Query("user_id") userId: Int
+    ): Response<ApiResponse<UserSessionDto?>>
 
     @POST("api/user/check_table.php")
     suspend fun checkTable(
@@ -401,6 +453,11 @@ interface ApiService {
     suspend fun getUserSessionStatus(
         @Query("session_id") sessionId: Int
     ): Response<ApiResponse<UserSessionDto>>
+
+    @POST("api/payment/simulate.php")
+    suspend fun simulatePayment(
+        @Body request: SimulatePaymentRequest
+    ): Response<ApiResponse<SimulatePaymentDataDto>>
 
     @GET("api/user/get_menu_by_combo.php")
     suspend fun getMenuByCombo(

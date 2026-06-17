@@ -4,7 +4,9 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,6 +55,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -107,16 +112,6 @@ fun ComboAndGuestScreen(
         }
     }
 
-    LaunchedEffect(combos.size) {
-        if (combos.size > 1) {
-            while (true) {
-                delay(3600)
-                val nextPage = (pagerState.currentPage + 1) % combos.size
-                pagerState.animateScrollToPage(nextPage)
-            }
-        }
-    }
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -124,7 +119,8 @@ fun ComboAndGuestScreen(
                 Brush.verticalGradient(
                     colors = listOf(Color(0xFFFFF7E8), Color(0xFFFFE2AA))
                 )
-            ),
+            )
+            .statusBarsPadding(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -605,7 +601,7 @@ private fun GuestPaymentPanel(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 Text(
-                    text = if (uiState.paymentMethod == "qr") "Tôi đã thanh toán QR" else "Xác nhận đã thu tiền",
+                    text = if (uiState.paymentMethod == "qr") "Tạo mã thanh toán QR" else "Xác nhận đã thu tiền mặt",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -698,22 +694,77 @@ private fun PaymentPreview(uiState: UserOrderUiState) {
                     style = MaterialTheme.typography.bodySmall
                 )
             } else {
-                Text("QR giả lập", color = InkBrown, fontWeight = FontWeight.Bold)
-                Text(
-                    text = "Nội dung: ${uiState.table?.table_code ?: uiState.tableCode}-BUFFET",
-                    color = MutedBrown,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Box(
-                    modifier = Modifier
-                        .size(74.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White),
-                    contentAlignment = Alignment.Center
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("QR", color = OrangeAccent, fontWeight = FontWeight.Bold)
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                            .border(1.dp, OrangeAccent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        QrGlyph(color = InkBrown, modifier = Modifier.fillMaxSize())
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            text = "Thanh toán VietQR",
+                            color = InkBrown,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Nội dung: ${uiState.table?.table_code ?: uiState.tableCode}-BUFFET",
+                            color = MutedBrown,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "Mã QR thật sẽ hiện ở bước kế tiếp.",
+                            color = AmberPrimaryDark,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Decorative QR-style glyph (three finder patterns plus a deterministic module fill). Stands in for
+ * a real QR in previews — not scannable, purely to read as "this is a QR payment".
+ */
+@Composable
+private fun QrGlyph(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val n = 21
+        val cell = size.minDimension / n
+
+        fun module(r: Int, c: Int) {
+            drawRect(color = color, topLeft = Offset(c * cell, r * cell), size = Size(cell, cell))
+        }
+
+        fun finder(r0: Int, c0: Int) {
+            for (r in 0..6) for (c in 0..6) {
+                val edge = r == 0 || r == 6 || c == 0 || c == 6
+                val center = r in 2..4 && c in 2..4
+                if (edge || center) module(r0 + r, c0 + c)
+            }
+        }
+
+        finder(0, 0)
+        finder(0, 14)
+        finder(14, 0)
+
+        for (r in 0 until n) for (c in 0 until n) {
+            val inFinder = (r < 8 && c < 8) || (r < 8 && c > 12) || (r > 12 && c < 8)
+            if (!inFinder && (r * c + r + c) % 3 == 0) module(r, c)
         }
     }
 }

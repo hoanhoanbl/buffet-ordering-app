@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 
 data class AdminDashboardUiState(
     val isLoading: Boolean = false,
+    val isFirstLoad: Boolean = true,
     val stats: DashboardStatsDto? = null,
     val errorMessage: String = ""
 )
@@ -27,11 +28,16 @@ class AdminDashboardViewModel : ViewModel() {
 
             val result = repository.getDashboardStats()
             result.onSuccess { stats ->
-                _uiState.value = AdminDashboardUiState(stats = stats)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isFirstLoad = false,
+                    stats = stats,
+                    errorMessage = ""
+                )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = error.message ?: "Khong lay duoc thong ke"
+                    errorMessage = error.message ?: "Không lấy được thống kê"
                 )
             }
         }

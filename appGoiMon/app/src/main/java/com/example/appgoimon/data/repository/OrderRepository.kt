@@ -26,9 +26,12 @@ class OrderRepository {
         }
     }
 
-    suspend fun getPendingOrders(status: String = "pending"): Result<List<PendingOrderItemDto>> {
+    suspend fun getPendingOrders(
+        status: String = "pending",
+        date: String? = null
+    ): Result<List<PendingOrderItemDto>> {
         return try {
-            val response = RetrofitClient.apiService.getPendingOrders(status)
+            val response = RetrofitClient.apiService.getPendingOrders(status, date)
             val body = response.body()
 
             if (response.isSuccessful && body != null && body.success && body.data != null) {

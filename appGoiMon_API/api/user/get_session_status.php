@@ -38,5 +38,17 @@ run_endpoint(function (): void {
         json_response(false, 'Khong tim thay phien ban', null, 404);
     }
 
-    json_response(true, 'Thanh cong', decorate_session($pdo, $session));
+    $session = decorate_session($pdo, $session);
+
+    // Re-attach the OFFLINE VietQR payload for resumed/polled QR sessions still awaiting payment, so
+    // the waiting screen can keep rendering the real, scannable bank-transfer QR. Display only — the
+    // payment-confirmation flow is untouched.
+    if (($session['payment_method'] ?? '') === 'qr' && ($session['payment_status'] ?? '') !== 'paid') {
+        $session = array_merge(
+            $session,
+            vietqr_payment_fields((int) $session['id'], (float) $session['total_amount'])
+        );
+    }
+
+    json_response(true, 'Thanh cong', $session);
 });

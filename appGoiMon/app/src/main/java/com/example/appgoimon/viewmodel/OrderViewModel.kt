@@ -12,15 +12,18 @@ import com.example.appgoimon.data.remote.UserSessionDto
 import com.example.appgoimon.data.remote.UserTableDto
 import com.example.appgoimon.data.repository.OrderRepository
 import com.example.appgoimon.data.repository.UserSessionRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
 
 enum class UserOrderStep {
     TABLE_ENTRY,
     COMBO_SETUP,
+    WAITING_PAYMENT,
     ACTIVE_MENU
 }
 
@@ -34,6 +37,8 @@ data class UserOrderUiState(
     val step: UserOrderStep = UserOrderStep.TABLE_ENTRY,
     val tableCode: String = "",
     val table: UserTableDto? = null,
+    val availableTables: List<UserTableDto> = emptyList(),
+    val isTablesLoading: Boolean = false,
     val session: UserSessionDto? = null,
     val createSessionResult: CreateSessionResponseDto? = null,
     val combos: List<UserComboDto> = emptyList(),
@@ -50,11 +55,32 @@ data class UserOrderUiState(
     val isMenuLoading: Boolean = false,
     val isSubmittingOrder: Boolean = false,
     val isLoadingHistory: Boolean = false,
+    // True while the mock-gateway simulate call is in flight (waiting-payment screen only).
+    val isSimulatingPayment: Boolean = false,
     val errorMessage: String = "",
-    val successMessage: String = ""
+    val successMessage: String = "",
+    // Live-ticking remaining seconds, driven by the countdown coroutine in OrderViewModel.
+    // Null when there is no active session to count down.
+    val liveRemainingSeconds: Int? = null,
+    // One-shot signal: number of items just sent to the kitchen on a successful order.
+    // Consumed by the UI (Snackbar) then reset via consumeOrderSuccess().
+    val orderSuccessCount: Int? = null,
+    // OFFLINE-generated VietQR (Napas EMVCo) bank-transfer payload + display fields, surfaced from the
+    // create-session / session-status responses for QR sessions. Null for cash sessions.
+    val vietqrPayload: String? = null,
+    val bankAccountNo: String? = null,
+    val bankAccountName: String? = null,
+    val bankNameOrBin: String? = null
 ) {
     val selectedCombo: UserComboDto?
         get() = combos.firstOrNull { it.id == selectedComboId }
+
+    // Transfer memo the (fake) gateway expects, embedding the session id: e.g. "BUFFET42".
+    val paymentMemo: String
+        get() {
+            val id = session?.id ?: createSessionResult?.session_id
+            return if (id != null) "BUFFET$id" else "BUFFET"
+        }
 
     val paidGuestCountValue: Int
         get() = paidGuestCount.toIntOrNull() ?: 0
@@ -69,10 +95,22 @@ data class UserOrderUiState(
         get() = cartItems.sumOf { it.quantity }
 
     val isSessionExpired: Boolean
-        get() = session?.is_expired == true || session?.status == "expired"
+        get() = session?.status == "expired" ||
+            session?.is_expired == true ||
+            (liveRemainingSeconds != null && liveRemainingSeconds <= 0)
 
     val remainingMinutes: Int
-        get() = session?.remaining_minutes ?: 0
+        get() {
+            val secs = liveRemainingSeconds
+            if (secs != null) {
+                return if (secs <= 0) 0 else (secs + 59) / 60
+            }
+            return session?.remaining_minutes ?: 0
+        }
+
+    // True when there is a session worth showing a countdown for (active or just expired).
+    val hasCountdownSession: Boolean
+        get() = session != null
 
     val categories: List<String>
         get() = menuItems
@@ -106,11 +144,91 @@ class OrderViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(UserOrderUiState())
     val uiState: StateFlow<UserOrderUiState> = _uiState
 
+    // Id of the logged-in user, set by MainActivity on login / cold-start restore. Sent on every
+    // ownership-aware call (list/check/create) and used to auto-resume the user's active session.
+    private var currentUserId: Int = 0
+
+    /** Records the active user id so session calls are scoped to (and owned by) that user. */
+    fun setCurrentUserId(userId: Int) {
+        currentUserId = userId
+    }
+
+    // Countdown ticker state. We anchor on the remaining seconds reported by the server at the
+    // moment a session is loaded, plus the device's elapsed-time reference, so the countdown stays
+    // correct regardless of server/device clock differences.
+    private var countdownJob: Job? = null
+    private var anchorRemainingSeconds: Int = 0
+    private var anchorElapsedMillis: Long = 0L
+
+    /**
+     * (Re)starts the live countdown for the given session. Reads the server-provided
+     * remaining_seconds as the anchor and ticks down locally every second. Stops itself when the
+     * session expires. Safe to call repeatedly; it cancels any previous ticker first.
+     */
+    private fun startCountdown(session: UserSessionDto?) {
+        countdownJob?.cancel()
+        countdownJob = null
+
+        val alreadyExpired = session?.status == "expired" || session?.is_expired == true
+        val remaining = session?.remaining_seconds ?: 0
+
+        if (session == null || alreadyExpired || remaining <= 0) {
+            // No active session to count down; surface 0 if a session exists but is expired.
+            _uiState.value = _uiState.value.copy(
+                liveRemainingSeconds = if (session == null) null else 0
+            )
+            return
+        }
+
+        anchorRemainingSeconds = remaining
+        anchorElapsedMillis = System.currentTimeMillis()
+        _uiState.value = _uiState.value.copy(liveRemainingSeconds = remaining)
+
+        countdownJob = viewModelScope.launch {
+            while (isActive) {
+                val elapsedSecs = ((System.currentTimeMillis() - anchorElapsedMillis) / 1000L).toInt()
+                val left = (anchorRemainingSeconds - elapsedSecs).coerceAtLeast(0)
+                _uiState.value = _uiState.value.copy(liveRemainingSeconds = left)
+                if (left <= 0) {
+                    // Mark the session expired locally and refresh from the server for the
+                    // authoritative status.
+                    _uiState.value.session?.let { current ->
+                        _uiState.value = _uiState.value.copy(
+                            session = current.copy(status = "expired", is_expired = true)
+                        )
+                    }
+                    refreshSessionStatus()
+                    break
+                }
+                delay(1000L)
+            }
+        }
+    }
+
     fun onTableCodeChange(value: String) {
         _uiState.value = _uiState.value.copy(
             tableCode = value.uppercase(Locale.ROOT),
             errorMessage = ""
         )
+    }
+
+    fun loadTables() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isTablesLoading = true, errorMessage = "")
+            val result = repository.listTables(currentUserId)
+
+            result.onSuccess { tables ->
+                _uiState.value = _uiState.value.copy(
+                    isTablesLoading = false,
+                    availableTables = tables
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isTablesLoading = false,
+                    errorMessage = error.message ?: "Khong lay duoc danh sach ban"
+                )
+            }
+        }
     }
 
     fun checkTable() {
@@ -122,52 +240,111 @@ class OrderViewModel : ViewModel() {
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "")
-            val result = repository.checkTable(tableCode)
+            val result = repository.checkTable(tableCode, currentUserId)
 
             result.onSuccess { response ->
                 val session = response.session
-                when {
-                    session == null -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            table = response.table,
-                            session = null,
-                            createSessionResult = null,
-                            cartItems = emptyList(),
-                            orderHistory = emptyList(),
-                            step = UserOrderStep.COMBO_SETUP
-                        )
-                        loadCombos()
-                    }
-
-                    session.status == "active" && session.is_expired != true -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            table = response.table,
-                            session = session,
-                            cartItems = emptyList(),
-                            step = UserOrderStep.ACTIVE_MENU
-                        )
-                        loadMenu(session.combo_id)
-                    }
-
-                    else -> {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            table = response.table,
-                            session = session,
-                            cartItems = emptyList(),
-                            step = UserOrderStep.ACTIVE_MENU,
-                            errorMessage = "Phien buffet da het thoi gian"
-                        )
-                        loadOrderHistory(session.id)
-                    }
+                if (session == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        table = response.table,
+                        session = null,
+                        createSessionResult = null,
+                        cartItems = emptyList(),
+                        orderHistory = emptyList(),
+                        step = UserOrderStep.COMBO_SETUP
+                    )
+                    startCountdown(null)
+                    loadCombos()
+                } else {
+                    routeIntoSession(session, response.table)
                 }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     errorMessage = error.message ?: "Kiem tra ban that bai"
                 )
+            }
+        }
+    }
+
+    /**
+     * Auto-resumes the current user's single active session (AC6). Call after login / cold-start
+     * restore. If the user has an active session, routes straight into it (ACTIVE_MENU when
+     * active/paid, WAITING_PAYMENT for an unpaid QR session); otherwise leaves the user on the
+     * table picker (TABLE_ENTRY).
+     */
+    fun resumeActiveSession() {
+        if (currentUserId <= 0) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "")
+            val result = repository.getMyActiveSession(currentUserId)
+
+            result.onSuccess { session ->
+                if (session != null) {
+                    val resumedTable = UserTableDto(
+                        id = session.table_id,
+                        table_code = session.table_code ?: "",
+                        table_name = session.table_name ?: (session.table_code ?: ""),
+                        status = "occupied",
+                        is_mine = true
+                    )
+                    routeIntoSession(session, resumedTable)
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }.onFailure {
+                // No reachable session info — fall back to the table picker without surfacing an error.
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    /**
+     * Shared resume routing used by both [checkTable] and [resumeActiveSession]: drops the user into
+     * the screen matching the session's state and kicks off the matching data load + countdown.
+     */
+    private fun routeIntoSession(session: UserSessionDto, table: UserTableDto?) {
+        when {
+            session.status == "active" && session.is_expired != true && session.payment_status != "paid" -> {
+                // Active QR session still awaiting payment — resume the waiting screen.
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    table = table,
+                    session = session,
+                    cartItems = emptyList(),
+                    step = UserOrderStep.WAITING_PAYMENT,
+                    vietqrPayload = session.vietqr_payload ?: _uiState.value.vietqrPayload,
+                    bankAccountNo = session.bank_account_no ?: _uiState.value.bankAccountNo,
+                    bankAccountName = session.bank_account_name ?: _uiState.value.bankAccountName,
+                    bankNameOrBin = session.bank_name_or_bin ?: _uiState.value.bankNameOrBin
+                )
+            }
+
+            session.status == "active" && session.is_expired != true -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    table = table,
+                    session = session,
+                    cartItems = emptyList(),
+                    step = UserOrderStep.ACTIVE_MENU
+                )
+                startCountdown(session)
+                loadMenu(session.combo_id)
+            }
+
+            else -> {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    table = table,
+                    session = session,
+                    cartItems = emptyList(),
+                    step = UserOrderStep.ACTIVE_MENU,
+                    errorMessage = "Phien buffet da het thoi gian"
+                )
+                startCountdown(session)
+                loadOrderHistory(session.id)
             }
         }
     }
@@ -253,10 +430,16 @@ class OrderViewModel : ViewModel() {
                 comboId = comboId,
                 paidGuestCount = paidGuests,
                 freeChildCount = freeChildren,
-                paymentMethod = state.paymentMethod
+                paymentMethod = state.paymentMethod,
+                userId = currentUserId
             )
 
             result.onSuccess { created ->
+                // Cash is collected by staff so it opens already paid; QR opens UNPAID and must wait
+                // for the server-confirmed gateway callback before the menu unlocks.
+                val isQr = state.paymentMethod == "qr"
+                val resolvedPaymentStatus = created.session?.payment_status
+                    ?: if (isQr) "unpaid" else "paid"
                 val session = created.session ?: UserSessionDto(
                     id = created.session_id,
                     table_id = created.table_id,
@@ -264,7 +447,7 @@ class OrderViewModel : ViewModel() {
                     paid_guest_count = paidGuests,
                     free_child_count = freeChildren,
                     payment_method = state.paymentMethod,
-                    payment_status = "paid",
+                    payment_status = resolvedPaymentStatus,
                     status = "active",
                     total_amount = created.total_amount,
                     start_time = null,
@@ -272,14 +455,31 @@ class OrderViewModel : ViewModel() {
                     table_name = state.table?.table_name,
                     combo_name = state.selectedCombo?.name
                 )
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    session = session,
-                    createSessionResult = created,
-                    step = UserOrderStep.ACTIVE_MENU,
-                    successMessage = "Da thanh toan, bat dau phien buffet 100 phut"
-                )
-                loadMenu(session.combo_id)
+
+                if (session.payment_status == "paid") {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        session = session,
+                        createSessionResult = created,
+                        step = UserOrderStep.ACTIVE_MENU,
+                        successMessage = "Đã thanh toán, bắt đầu phiên buffet 100 phút"
+                    )
+                    startCountdown(session)
+                    loadMenu(session.combo_id)
+                } else {
+                    // QR: hold on the waiting screen until the server reports payment_status = 'paid'.
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        session = session,
+                        createSessionResult = created,
+                        step = UserOrderStep.WAITING_PAYMENT,
+                        successMessage = "",
+                        vietqrPayload = created.vietqr_payload ?: session.vietqr_payload,
+                        bankAccountNo = created.bank_account_no ?: session.bank_account_no,
+                        bankAccountName = created.bank_account_name ?: session.bank_account_name,
+                        bankNameOrBin = created.bank_name_or_bin ?: session.bank_name_or_bin
+                    )
+                }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -296,21 +496,64 @@ class OrderViewModel : ViewModel() {
             val result = repository.getSessionStatus(sessionId)
 
             result.onSuccess { session ->
+                val onWaitingScreen = _uiState.value.step == UserOrderStep.WAITING_PAYMENT
+                val isPaid = session.payment_status == "paid"
+
+                // While waiting on a QR payment, only the SERVER-confirmed paid status may advance
+                // the customer into the active menu. An unpaid poll keeps us on the waiting screen.
+                if (onWaitingScreen && !isPaid) {
+                    _uiState.value = _uiState.value.copy(
+                        session = session,
+                        vietqrPayload = session.vietqr_payload ?: _uiState.value.vietqrPayload,
+                        bankAccountNo = session.bank_account_no ?: _uiState.value.bankAccountNo,
+                        bankAccountName = session.bank_account_name ?: _uiState.value.bankAccountName,
+                        bankNameOrBin = session.bank_name_or_bin ?: _uiState.value.bankNameOrBin
+                    )
+                    return@onSuccess
+                }
+
                 _uiState.value = _uiState.value.copy(
                     session = session,
                     step = UserOrderStep.ACTIVE_MENU,
+                    successMessage = if (onWaitingScreen && isPaid) "Đã xác nhận thanh toán" else _uiState.value.successMessage,
                     errorMessage = if (session.is_expired == true || session.status == "expired") {
-                        "Phien buffet da het thoi gian"
+                        "Phiên buffet đã hết thời gian"
                     } else {
                         ""
                     }
                 )
+                startCountdown(session)
                 if (session.is_expired != true && session.status == "active") {
                     loadMenu(session.combo_id)
                 }
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(
-                    errorMessage = error.message ?: "Khong cap nhat duoc trang thai"
+                    errorMessage = error.message ?: "Không cập nhật được trạng thái"
+                )
+            }
+        }
+    }
+
+    /**
+     * DEV/DEMO ONLY. Asks the mock payment gateway to report a payment for the waiting session.
+     * The customer tapping this does NOT set paid status; the server validates and flips it, and the
+     * waiting screen's poll of [refreshSessionStatus] then drives the navigation to the active menu.
+     */
+    fun simulatePayment() {
+        val sessionId = _uiState.value.session?.id ?: _uiState.value.createSessionResult?.session_id ?: return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSimulatingPayment = true, errorMessage = "")
+            val result = repository.simulatePayment(sessionId)
+
+            result.onSuccess {
+                _uiState.value = _uiState.value.copy(isSimulatingPayment = false)
+                // Don't trust the local result for navigation — re-read the authoritative server status.
+                refreshSessionStatus()
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isSimulatingPayment = false,
+                    errorMessage = error.message ?: "Giả lập thanh toán thất bại"
                 )
             }
         }
@@ -341,6 +584,8 @@ class OrderViewModel : ViewModel() {
     }
 
     fun backToTableEntry() {
+        countdownJob?.cancel()
+        countdownJob = null
         _uiState.value = UserOrderUiState()
     }
 
@@ -395,6 +640,13 @@ class OrderViewModel : ViewModel() {
 
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = "", successMessage = "")
+    }
+
+    /** Consumes the one-shot order-success signal so the Snackbar does not re-fire on recomposition. */
+    fun consumeOrderSuccess() {
+        if (_uiState.value.orderSuccessCount != null) {
+            _uiState.value = _uiState.value.copy(orderSuccessCount = null)
+        }
     }
 
     fun loadOrderHistory() {
@@ -467,9 +719,11 @@ class OrderViewModel : ViewModel() {
             val result = orderRepository.createOrder(request)
 
             result.onSuccess {
+                val sentCount = currentState.cartItems.sumOf { it.quantity }
                 _uiState.value = _uiState.value.copy(
                     isSubmittingOrder = false,
-                    successMessage = "Da gui ${currentState.cartItems.sumOf { it.quantity }} mon thanh cong",
+                    successMessage = "Da gui $sentCount mon thanh cong",
+                    orderSuccessCount = sentCount,
                     cartItems = emptyList()
                 )
                 loadOrderHistory(sessionId)
