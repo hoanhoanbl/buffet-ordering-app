@@ -74,10 +74,6 @@ fun OrderHistoryScreen(
                 )
             )
     ) {
-        SectionHeader(
-            title = "Đã gọi",
-            subtitle = "Các lượt gọi món trong phiên bàn"
-        )
         PullToRefreshBox(
             isRefreshing = uiState.isLoadingHistory,
             onRefresh = onRefresh,
@@ -125,23 +121,6 @@ fun OrderHistoryScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, subtitle: String) {
-    Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = InkBrown
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MutedBrown
-        )
     }
 }
 

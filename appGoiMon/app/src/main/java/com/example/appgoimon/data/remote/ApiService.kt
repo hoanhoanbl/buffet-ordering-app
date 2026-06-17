@@ -191,6 +191,25 @@ data class UploadImageDto(
     val filename: String
 )
 
+data class AdminComboDto(
+    val id: Int,
+    val combo_name: String,
+    val price_per_person: String,
+    val description: String? = null,
+    val status: String,
+    val item_count: Int = 0
+)
+
+data class ManageComboRequest(
+    val action: String,
+    val combo_id: Int? = null,
+    val name: String? = null,
+    val price_per_person: Int? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val food_ids: List<Int>? = null
+)
+
 data class PendingOrderItemDto(
     val order_item_id: Int,
     val order_id: Int,
@@ -215,6 +234,7 @@ data class MutationResultDto(
     val session_id: Int? = null,
     val category_id: Int? = null,
     val food_id: Int? = null,
+    val combo_id: Int? = null,
     val order_item_id: Int? = null,
     val status: String? = null
 )
@@ -404,6 +424,19 @@ interface ApiService {
     suspend fun uploadFoodImage(
         @Part image: MultipartBody.Part
     ): Response<ApiResponse<UploadImageDto>>
+
+    @GET("api/admin/get_combos.php")
+    suspend fun getAdminCombos(): Response<ApiResponse<List<AdminComboDto>>>
+
+    @GET("api/admin/get_combo_foods.php")
+    suspend fun getComboFoodIds(
+        @Query("combo_id") comboId: Int
+    ): Response<ApiResponse<List<Int>>>
+
+    @POST("api/admin/manage_combo.php")
+    suspend fun manageCombo(
+        @Body request: ManageComboRequest
+    ): Response<ApiResponse<MutationResultDto>>
 
     @GET("api/admin/get_pending_orders.php")
     suspend fun getPendingOrders(

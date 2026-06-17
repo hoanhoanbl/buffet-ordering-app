@@ -126,12 +126,25 @@ fun ManageFoodScreen() {
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFE1D2))
                 )
             }
+            item {
+                FilterChip(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    label = { Text("Combo") },
+                    leadingIcon = if (selectedTab == 2) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else {
+                        null
+                    },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Color(0xFFFFE1D2))
+                )
+            }
         }
 
-        if (selectedTab == 0) {
-            MenuItemsScreen()
-        } else {
-            ManageCategoryScreen()
+        when (selectedTab) {
+            0 -> MenuItemsScreen()
+            1 -> ManageCategoryScreen()
+            else -> ManageComboScreen()
         }
     }
 }

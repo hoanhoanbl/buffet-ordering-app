@@ -5,16 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -22,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.example.appgoimon.data.remote.AuthUserDto
 import com.example.appgoimon.data.remote.MenuItemDto
 import com.example.appgoimon.ui.theme.InkBrown
+import com.example.appgoimon.ui.theme.MutedBrown
 import com.example.appgoimon.ui.theme.OrangeAccent
 import com.example.appgoimon.viewmodel.UserOrderUiState
 
@@ -183,33 +188,72 @@ private fun UserTopBar(uiState: UserOrderUiState, onLogout: () -> Unit) {
         else -> "$minutes phút"
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(containerColor)
-            // enableEdgeToEdge() lets content draw under the system status bar; without this the
-            // logout button and countdown sit behind it and the OS swallows their taps.
-            .statusBarsPadding()
-            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = if (hasSession) (uiState.session?.table_name ?: "Phiên buffet") else "Buffet",
-            color = InkBrown,
-            fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.weight(1f)
-        )
-        if (hasSession) {
-            CountdownChip(timeText = timeText, contentColor = contentColor, expired = expired)
-        }
-        IconButton(onClick = onLogout) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = "Đăng xuất",
-                tint = OrangeAccent
-            )
+    // Surface gives a soft shadow so the bar reads as a real app bar above the scrolling content.
+    Surface(color = containerColor, shadowElevation = 3.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                // enableEdgeToEdge() lets content draw under the system status bar; without this the
+                // logout button and countdown sit behind it and the OS swallows their taps.
+                .statusBarsPadding()
+                .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Table identity chip: a tinted pin + name + a small status subtitle.
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.White),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = null,
+                        tint = OrangeAccent,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = if (hasSession) (uiState.session?.table_name ?: "Phiên buffet") else "Buffet",
+                        color = InkBrown,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = when {
+                            !hasSession -> "Nhà hàng buffet"
+                            expired -> "Phiên đã kết thúc"
+                            else -> "Phiên đang mở"
+                        },
+                        color = MutedBrown,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            if (hasSession) {
+                CountdownChip(timeText = timeText, contentColor = contentColor, expired = expired)
+            }
+
+            Surface(shape = CircleShape, color = Color.White) {
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Đăng xuất",
+                        tint = OrangeAccent
+                    )
+                }
+            }
         }
     }
 }

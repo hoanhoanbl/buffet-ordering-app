@@ -3,7 +3,9 @@ package com.example.appgoimon.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appgoimon.data.remote.CategoryDto
+import com.example.appgoimon.data.remote.MenuItemDto
 import com.example.appgoimon.data.repository.CategoryRepository
+import com.example.appgoimon.data.repository.FoodRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -11,6 +13,7 @@ import kotlinx.coroutines.launch
 data class AdminCategoryUiState(
     val isLoading: Boolean = false,
     val categories: List<CategoryDto> = emptyList(),
+    val menuItems: List<MenuItemDto> = emptyList(),
     val editingCategoryId: Int? = null,
     val name: String = "",
     val status: String = "active",
@@ -21,6 +24,7 @@ data class AdminCategoryUiState(
 class AdminCategoryViewModel : ViewModel() {
 
     private val repository = CategoryRepository()
+    private val foodRepository = FoodRepository()
 
     private val _uiState = MutableStateFlow(AdminCategoryUiState())
     val uiState: StateFlow<AdminCategoryUiState> = _uiState
@@ -30,10 +34,12 @@ class AdminCategoryViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = "")
 
             val result = repository.getCategories()
+            val foods = foodRepository.getMenuItems().getOrNull()
             result.onSuccess { categories ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    categories = categories
+                    categories = categories,
+                    menuItems = foods ?: _uiState.value.menuItems
                 )
             }.onFailure { error ->
                 _uiState.value = _uiState.value.copy(

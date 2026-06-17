@@ -228,7 +228,7 @@ private fun ComboCarousel(
             pageSpacing = 14.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(430.dp)
+                .height(360.dp)
         ) { page ->
             val combo = combos[page]
             val selected = selectedComboId == combo.id
@@ -325,7 +325,7 @@ private fun ComboHeroCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
+                    .height(210.dp)
                     .background(Color(0xFFFFFAF0))
             ) {
                 Crossfade(
@@ -337,7 +337,7 @@ private fun ComboHeroCard(
                         model = imageUrl,
                         contentDescription = combo.name,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit,
+                        contentScale = ContentScale.Crop,
                         loading = { ImageFallbackBox() },
                         error = { ImageFallbackBox() }
                     )
@@ -415,9 +415,9 @@ private fun ComboHeroCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = combo.description ?: "Combo buffet nướng, lẩu và món ăn chọn lọc.",
+                    text = "Buffet không giới hạn — chọn để xem chi tiết món",
                     color = MutedBrown,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

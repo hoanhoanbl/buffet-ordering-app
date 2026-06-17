@@ -53,12 +53,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.SubcomposeAsyncImage
 import com.example.appgoimon.data.remote.CategoryDto
+import com.example.appgoimon.data.remote.MenuItemDto
+import com.example.appgoimon.data.remote.RetrofitClient
 import com.example.appgoimon.ui.theme.AmberPrimaryDark
 import com.example.appgoimon.ui.theme.InkBrown
 import com.example.appgoimon.ui.theme.MutedBrown
@@ -145,6 +149,7 @@ fun ManageCategoryScreen(
         items(uiState.categories) { category ->
             CategoryCard(
                 category = category,
+                dishes = uiState.menuItems.filter { it.category_id == category.id },
                 onEdit = {
                     viewModel.startEdit(category)
                     showSheet = true
@@ -337,6 +342,7 @@ private fun CategoryForm(
 @Composable
 private fun CategoryCard(
     category: CategoryDto,
+    dishes: List<MenuItemDto>,
     onEdit: () -> Unit,
     onToggleStatus: () -> Unit,
     onDelete: () -> Unit
@@ -387,6 +393,49 @@ private fun CategoryCard(
                 StatusBadge(category.status)
             }
 
+            if (dishes.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    dishes.take(5).forEach { dish ->
+                        SubcomposeAsyncImage(
+                            model = resolveFoodImageUrl(dish.image),
+                            contentDescription = dish.name,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Crop,
+                            loading = { CategoryThumbFallback() },
+                            error = { CategoryThumbFallback() }
+                        )
+                    }
+                    if (dishes.size > 5) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFFFF0D6)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "+${dishes.size - 5}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = AmberPrimaryDark,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFF0D6)) {
+                Text(
+                    text = if (dishes.isEmpty()) "Chưa có món" else "${dishes.size} món",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = AmberPrimaryDark,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = onEdit,
@@ -415,6 +464,26 @@ private fun CategoryCard(
             }
         }
     }
+}
+
+@Composable
+private fun CategoryThumbFallback() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFFF3D8)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Ảnh", style = MaterialTheme.typography.labelSmall, color = MutedBrown)
+    }
+}
+
+private fun resolveFoodImageUrl(image: String?): String? {
+    val value = image?.trim().orEmpty()
+    if (value.isEmpty()) return null
+    if (value.startsWith("http://") || value.startsWith("https://")) return value
+    if (!value.contains('/')) return RetrofitClient.BASE_URL + "uploads/foods/$value"
+    return RetrofitClient.BASE_URL + value.trimStart('/')
 }
 
 @Composable

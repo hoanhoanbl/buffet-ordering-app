@@ -84,11 +84,6 @@ fun CartScreen(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        SectionHeader(
-            title = "Giỏ món",
-            subtitle = if (totalQuantity > 0) "$totalQuantity món đang chọn" else "Chọn món từ thực đơn"
-        )
-
         if (isExpired) {
             SessionExpiredCard()
         }
@@ -159,24 +154,6 @@ private fun LeftoverFeeNotice() {
                 color = MutedBrown
             )
         }
-    }
-}
-
-/** Lightweight in-content page title (not an app bar) so it doesn't stack with the scaffold header. */
-@Composable
-private fun SectionHeader(title: String, subtitle: String) {
-    Column(modifier = Modifier.padding(top = 2.dp, bottom = 2.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = InkBrown
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MutedBrown
-        )
     }
 }
 

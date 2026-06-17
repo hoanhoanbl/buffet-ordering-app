@@ -19,7 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +39,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -851,33 +858,52 @@ private fun TablesTab(
         if (manualRefreshTick > 0) viewModel.loadTables()
     }
 
-    LazyColumn(
+    var filter by remember { mutableStateOf("all") }
+    val visibleTables = uiState.tables.filter { table ->
+        when (filter) {
+            "available" -> effectiveTableStatus(table) == "available"
+            "occupied" -> effectiveTableStatus(table) == "occupied"
+            "waiting" -> effectiveTableStatus(table) in listOf("waiting_payment", "pending_payment")
+            else -> true
+        }
+    }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Show spinner only during the very first load (list is still empty).
-        if (uiState.isLoading && uiState.isFirstLoad) {
-            item {
-                CircularProgressIndicator(color = AmberPrimaryDark)
-            }
-        }
-
         if (uiState.errorMessage.isNotEmpty()) {
-            item {
-                ErrorBlock(
-                    message = uiState.errorMessage,
-                    onRetry = viewModel::loadTables
-                )
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                ErrorBlock(message = uiState.errorMessage, onRetry = viewModel::loadTables)
             }
         }
 
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             TableSummaryCard(tables = uiState.tables)
         }
 
-        items(uiState.tables) { table ->
-            TableCard(
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            TableFilterRow(selected = filter, onSelect = { filter = it })
+        }
+
+        if (uiState.isLoading && uiState.isFirstLoad) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AmberPrimaryDark)
+                }
+            }
+        }
+
+        gridItems(visibleTables) { table ->
+            TableTile(
                 table = table,
                 onClick = { onTableClick(table.id) }
             )
@@ -886,126 +912,113 @@ private fun TablesTab(
 }
 
 @Composable
-private fun TableCard(
+private fun TableFilterRow(selected: String, onSelect: (String) -> Unit) {
+    val options = listOf(
+        "all" to "Tất cả",
+        "available" to "Trống",
+        "occupied" to "Đang dùng",
+        "waiting" to "Chờ TT"
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(options) { (key, label) ->
+            FilterChip(
+                selected = selected == key,
+                onClick = { onSelect(key) },
+                label = { Text(label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFFFFE1D2),
+                    selectedLabelColor = OrangeAccent
+                )
+            )
+        }
+    }
+}
+
+/** Normalizes a table's status: released/expired/no-session ⇒ available; else the raw status. */
+private fun effectiveTableStatus(table: TableDto): String {
+    val released = table.is_expired == true || table.session_status == "expired"
+    val available = table.session_id == null || released || table.status == "available"
+    return if (available) "available" else table.status
+}
+
+@Composable
+private fun TableTile(
     table: TableDto,
     onClick: () -> Unit
 ) {
-    val isReleased = table.is_expired == true || table.session_status == "expired"
-    val isAvailable = table.session_id == null || isReleased || table.status == "available"
-    val effectiveStatus = if (isAvailable) "available" else table.status
-    val (accentFg, accentBg) = tableAccent(effectiveStatus)
-    // Tables awaiting payment need attention — give the whole card a faint warm wash.
-    val needsAttention = effectiveStatus == "waiting_payment" || effectiveStatus == "pending_payment"
-    val cardBg = if (needsAttention) Color(0xFFFFF8F2) else Color.White
+    val eff = effectiveTableStatus(table)
+    val (accentFg, accentBg) = tableAccent(eff)
+    val isAvailable = eff == "available"
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
-        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-            // Status accent stripe — lets the eye scan the column and spot active tables instantly.
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .fillMaxHeight()
-                    .background(accentFg)
-            )
-
+        Column {
+            // Status-tinted header band with the table name + a live status dot.
             Row(
-                modifier = Modifier.padding(14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(accentBg)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = table.table_name,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = accentFg,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
-                        .background(accentBg, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
+                        .size(9.dp)
+                        .background(accentFg, CircleShape)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                StatusBadge(eff)
+                if (isAvailable) {
                     Text(
-                        text = table.table_code.takeLast(2),
+                        text = "Sẵn sàng nhận khách",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedBrown
+                    )
+                } else {
+                    Text(
+                        text = table.combo_name ?: "Buffet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkBrown,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Còn ${table.remaining_minutes ?: 0} phút",
+                        style = MaterialTheme.typography.labelMedium,
                         color = accentFg,
                         fontWeight = FontWeight.Bold
                     )
-                }
-
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = table.table_name,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = InkBrown,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = table.table_code,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MutedBrown
-                            )
-                        }
-                        StatusBadge(effectiveStatus)
-                    }
-
-                    if (isAvailable) {
-                        Text(
-                            text = "Sẵn sàng nhận khách mới",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MutedBrown
-                        )
-                    } else {
-                        Text(
-                            text = table.combo_name ?: "Buffet",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = InkBrown,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = formatCurrency(table.total_amount ?: "0"),
-                                color = OrangeAccent,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                text = statusLabel(table.payment_status ?: "-"),
-                                color = MutedBrown,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        // Remaining-time pill so the most time-sensitive number reads at a glance.
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = accentBg
-                        ) {
-                            Text(
-                                text = "Còn lại ${table.remaining_minutes ?: 0} phút",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                color = accentFg,
-                                fontWeight = FontWeight.SemiBold,
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
+                    Text(
+                        text = formatCurrency(table.total_amount ?: "0"),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = OrangeAccent,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
