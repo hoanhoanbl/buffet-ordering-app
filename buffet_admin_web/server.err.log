@@ -1,0 +1,151 @@
+[Tue Jun 16 18:25:37 2026] PHP 8.2.12 Development Server (http://127.0.0.1:8010) started
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64261 Accepted
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64261 [200]: GET /orders.php
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64261 Closing
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64262 Accepted
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64262 [200]: GET /tables.php
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64262 Closing
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64263 Accepted
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64263 [200]: GET /index.php
+[Tue Jun 16 18:25:50 2026] 127.0.0.1:64263 Closing
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51759 Accepted
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51759 [200]: GET /combos.php
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51759 Closing
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51760 Accepted
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51760 [200]: GET /menu.php
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51760 Closing
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51763 Accepted
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51763 [200]: GET /index.php
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51763 Closing
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51765 Accepted
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51765 [200]: GET /tables.php
+[Tue Jun 16 18:57:04 2026] 127.0.0.1:51765 Closing
+[Tue Jun 16 18:57:18 2026] 127.0.0.1:59559 Accepted
+[Tue Jun 16 18:57:18 2026] 127.0.0.1:59559 [200]: GET /index.php
+[Tue Jun 16 18:57:18 2026] 127.0.0.1:59559 Closing
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60713 Accepted
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60713 [200]: GET /orders.php
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60713 Closing
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60715 Accepted
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60715 [200]: GET /categories.php
+[Tue Jun 16 18:57:41 2026] 127.0.0.1:60715 Closing
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:49238 Accepted
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:50914 Accepted
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:49238 [200]: GET /index.php
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:49238 Closing
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:50914 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:53017 Accepted
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:53017 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:50914 Closing
+[Tue Jun 16 18:57:55 2026] 127.0.0.1:53017 Closing
+[Tue Jun 16 18:57:56 2026] 127.0.0.1:55569 Accepted
+[Tue Jun 16 18:57:56 2026] 127.0.0.1:55569 [404]: GET /favicon.ico - No such file or directory
+[Tue Jun 16 18:57:56 2026] 127.0.0.1:55569 Closing
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:56526 Accepted
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:56526 [200]: GET /tables.php
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:56526 Closing
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:51668 Accepted
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:51668 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:59979 Accepted
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:59979 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:51668 Closing
+[Tue Jun 16 18:58:00 2026] 127.0.0.1:59979 Closing
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:55461 Accepted
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:55461 [200]: GET /tables.php?search=&status=occupied
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:55461 Closing
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:59926 Accepted
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:59926 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:59926 Closing
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:65007 Accepted
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:65007 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:58:04 2026] 127.0.0.1:65007 Closing
+[Tue Jun 16 18:58:19 2026] 127.0.0.1:64236 Accepted
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:64236 [200]: GET /index.php
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:64236 Closing
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:56517 Accepted
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:56517 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:62247 Accepted
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:62247 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:56517 Closing
+[Tue Jun 16 18:58:20 2026] 127.0.0.1:62247 Closing
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:53451 Accepted
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:50053 Accepted
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:53451 [200]: GET /orders.php
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:53451 Closing
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:50053 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:50053 Closing
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:57827 Accepted
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:57827 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:58:53 2026] 127.0.0.1:57827 Closing
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:53830 Accepted
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:53830 [200]: GET /menu.php
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:53830 Closing
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:64615 Accepted
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:64615 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:64615 Closing
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:58967 Accepted
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:58967 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:58:58 2026] 127.0.0.1:58967 Closing
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:57782 Accepted
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:57782 [200]: GET /categories.php
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:57782 Closing
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63166 Accepted
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63166 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63166 Closing
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63591 Accepted
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63591 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:63591 Closing
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:54607 Accepted
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:55809 Accepted
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:54607 [200]: GET /combos.php
+[Tue Jun 16 18:59:02 2026] 127.0.0.1:54607 Closing
+[Tue Jun 16 18:59:03 2026] 127.0.0.1:55809 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:59:03 2026] 127.0.0.1:55809 Closing
+[Tue Jun 16 18:59:03 2026] 127.0.0.1:59747 Accepted
+[Tue Jun 16 18:59:03 2026] 127.0.0.1:59747 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:59:03 2026] 127.0.0.1:59747 Closing
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:62566 Accepted
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:62566 [200]: GET /combos.php
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:62566 Closing
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:64509 Accepted
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:64509 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:64509 Closing
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:50299 Accepted
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:50299 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:59:19 2026] 127.0.0.1:50299 Closing
+[Tue Jun 16 18:59:21 2026] 127.0.0.1:53353 Accepted
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:53353 [200]: GET /index.php
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:53353 Closing
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:53007 Accepted
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:53007 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:53007 Closing
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:59197 Accepted
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:59197 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:59:22 2026] 127.0.0.1:59197 Closing
+[Tue Jun 16 18:59:24 2026] 127.0.0.1:51653 Accepted
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:51653 [200]: GET /menu.php
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:51653 Closing
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:58643 Accepted
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:58643 [200]: GET /assets/css/app.css
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:58643 Closing
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:57950 Accepted
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:57950 [200]: GET /assets/js/app.js
+[Tue Jun 16 18:59:25 2026] 127.0.0.1:57950 Closing
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:51379 Accepted
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:51379 [200]: GET /index.php
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:51379 Closing
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:54799 Accepted
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:54799 [200]: GET /assets/css/app.css
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:54799 Closing
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:55033 Accepted
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:55033 [200]: GET /assets/js/app.js
+[Tue Jun 16 19:00:19 2026] 127.0.0.1:55033 Closing
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:64404 Accepted
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:64404 [200]: GET /index.php
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:64404 Closing
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:50697 Accepted
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:50697 [200]: GET /assets/css/app.css
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:50697 Closing
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:54322 Accepted
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:54322 [200]: GET /assets/js/app.js
+[Tue Jun 16 19:00:49 2026] 127.0.0.1:54322 Closing
